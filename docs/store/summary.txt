@@ -1,0 +1,2 @@
+Supply-and-demand economy for NeoForge. Prices follow stock; villagers and machines trade for you.
+Economia de oferta e demanda para NeoForge. Preços seguem o estoque; aldeões e máquinas negociam.

@@ -1,0 +1,14 @@
+ABOUT
+A NeoForge economy mod for modpacks and servers. A global Trade Association prices every item by supply, values modded items from their recipes, and trades through Trade Representative villagers, Sell Points and Auto Buyers. Minecraft 1.21.1 and 26.1.2.
+
+TOPICS
+minecraft
+minecraft-mod
+neoforge
+economy
+villager
+trading
+modpack
+minecraft-server
+postgresql
+sqlite
