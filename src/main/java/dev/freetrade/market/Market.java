@@ -55,6 +55,8 @@ public final class Market {
     private final Map<String, Long> stock = new ConcurrentHashMap<>();
     private final Map<String, Long> accounts = new ConcurrentHashMap<>();
     private final Map<String, Double> unitMemo = new ConcurrentHashMap<>();
+    /** Per-item taxes from values.json: they replace the global tax percentage of that direction. */
+    private volatile Map<String, TaxRule> sellTaxes = Map.of(), buyTaxes = Map.of();
     /** Admin-forced unit prices (U.M.): they replace the formula for that item. Shared through the database. */
     private final Map<String, Double> overrides = new ConcurrentHashMap<>();
     private final ThreadLocal<Set<String>> visiting = ThreadLocal.withInitial(HashSet::new);
@@ -288,7 +290,7 @@ public final class Market {
     /** Real (unrounded) milli the association would pay for n units, after tax and durability, before backoff. */
     private long realSellNet(String item, long n, double factor) {
         long gross = (long) (sellSum(item, baseValue(item), reference(item), stock(item), n) * factor);
-        return gross - taxOf(gross, settings.taxSellPercent());
+        return gross - sellTax(item, gross, n, settings.taxSellPercent());
     }
 
     /**
@@ -312,7 +314,7 @@ public final class Market {
         long cost = PricingEngine.applyMultiplier(buySum(item, baseValue(item), reference(item), stock(item), units),
                 backoffMultiplier);
         if (cost < 0) return -1;
-        return Money.roundHalfUp(cost + taxOf(cost, settings.taxBuyPercent()));
+        return Money.roundHalfUp(cost + buyTax(item, cost, units, settings.taxBuyPercent()));
     }
 
     /** Units actually traded for a request of n (sell: down to whole lots, buy: up to whole lots). */
@@ -330,6 +332,31 @@ public final class Market {
         if (!st.backoff().enabled() || player == null) return CompletableFuture.completedFuture(1.0);
         return db.submit(c -> BackoffTracker.peek(store.lockBackoff(c, player, item), st.backoff(),
                 System.currentTimeMillis())).exceptionally(t -> 1.0);
+    }
+
+    public void setItemTaxes(Map<String, TaxRule> sell, Map<String, TaxRule> buy) {
+        this.sellTaxes = Map.copyOf(sell);
+        this.buyTaxes = Map.copyOf(buy);
+        unitMemo.clear();
+    }
+
+    public TaxRule sellTaxRule(String item) {
+        return sellTaxes.get(item);
+    }
+
+    public TaxRule buyTaxRule(String item) {
+        return buyTaxes.get(item);
+    }
+
+    private long sellTax(String item, long gross, long units, double globalPercent) {
+        TaxRule rule = sellTaxes.get(item);
+        long tax = rule != null ? rule.apply(gross, units) : taxOf(gross, globalPercent);
+        return Math.min(Math.max(0, gross), tax); // a sale never costs the player money
+    }
+
+    private long buyTax(String item, long cost, long units, double globalPercent) {
+        TaxRule rule = buyTaxes.get(item);
+        return rule != null ? rule.apply(cost, units) : taxOf(cost, globalPercent);
     }
 
     private static long taxOf(long amount, double percent) {
@@ -397,7 +424,7 @@ public final class Market {
     private long[] sellParts(String item, double b, double r, long s, long units, double factor, double penalty,
                              double taxPercent) {
         long gross = (long) (sellSum(item, b, r, s, units) * factor / penalty);
-        long tax = taxOf(gross, taxPercent);
+        long tax = sellTax(item, gross, units, taxPercent);
         long netReal = gross - tax;
         return new long[]{Money.roundHalfUp(netReal), tax, netReal};
     }
@@ -406,7 +433,7 @@ public final class Market {
     private long[] buyParts(String item, double b, double r, long s, long units, double mult, double taxPercent) {
         long cost = PricingEngine.applyMultiplier(buySum(item, b, r, s, units), mult);
         if (cost < 0) return null;
-        long tax = taxOf(cost, taxPercent);
+        long tax = buyTax(item, cost, units, taxPercent);
         long real = cost + tax;
         return new long[]{Money.roundHalfUp(real), tax, real};
     }

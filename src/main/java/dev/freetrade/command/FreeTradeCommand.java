@@ -76,6 +76,18 @@ public final class FreeTradeCommand {
                                         .executes(c -> changeStock(c, 1))))
                                 .then(Commands.literal("remove").then(Commands.argument("amount", LongArgumentType.longArg(1))
                                         .executes(c -> changeStock(c, -1))))))
+                .then(Commands.literal("tax").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.literal("list").executes(FreeTradeCommand::taxList))
+                        .then(Commands.argument("item", ItemArgument.item(ctx))
+                                .executes(FreeTradeCommand::taxShow)
+                                .then(Commands.literal("sell").then(Commands.argument("value", StringArgumentType.greedyString())
+                                        .executes(c -> taxSet(c, "sell"))))
+                                .then(Commands.literal("buy").then(Commands.argument("value", StringArgumentType.greedyString())
+                                        .executes(c -> taxSet(c, "buy"))))
+                                .then(Commands.literal("clear")
+                                        .executes(c -> taxClear(c, null))
+                                        .then(Commands.literal("sell").executes(c -> taxClear(c, "sell")))
+                                        .then(Commands.literal("buy").executes(c -> taxClear(c, "buy"))))))
                 .then(Commands.literal("forceprice").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.literal("list").executes(FreeTradeCommand::forcedList))
                         .then(Commands.argument("item", ItemArgument.item(ctx))
@@ -223,6 +235,73 @@ public final class FreeTradeCommand {
         CompletableFuture<Long> f = mode == 0 ? m.setStock(id, amount) : m.adjustStock(id, mode * amount);
         later(c.getSource(), f, v -> Component.translatable("freetrade.setstock.done", item.getDefaultInstance().getHoverName(), v));
         return 1;
+    }
+
+    // ------------------------------------------------------------------ per-item taxes
+
+    private static Component taxText(dev.freetrade.market.TaxRule r, double globalPercent) {
+        if (r == null) return Component.translatable("freetrade.tax.global", String.format(Locale.ROOT, "%s%%",
+                globalPercent == Math.rint(globalPercent) ? Long.toString((long) globalPercent) : Double.toString(globalPercent)));
+        return r.percent() ? Component.literal(r.toString()) : Component.translatable("freetrade.tax.fixed", r.toString());
+    }
+
+    private static int taxShow(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        String id = ItemKeys.id(item);
+        reply(c.getSource(), Component.translatable("freetrade.tax.show", item.getDefaultInstance().getHoverName(),
+                taxText(m.sellTaxRule(id), m.settings().taxSellPercent()),
+                taxText(m.buyTaxRule(id), m.settings().taxBuyPercent())));
+        return 1;
+    }
+
+    private static int taxSet(CommandContext<CommandSourceStack> c, String direction) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        String raw = StringArgumentType.getString(c, "value").trim();
+        dev.freetrade.market.TaxRule rule;
+        try {
+            rule = dev.freetrade.market.TaxRule.parse(raw);
+        } catch (IllegalArgumentException e) {
+            c.getSource().sendFailure(Component.translatable("freetrade.tax.invalid", raw));
+            return 0;
+        }
+        try {
+            ValueTable.putTax(ItemKeys.id(item), direction, rule.toString());
+        } catch (Exception e) {
+            c.getSource().sendFailure(Component.literal(e.toString()));
+            return 0;
+        }
+        Valuation.applyTaxes(m, ValueTable.get());
+        return taxShow(c);
+    }
+
+    private static int taxClear(CommandContext<CommandSourceStack> c, String direction) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        try {
+            if (direction == null || direction.equals("sell")) ValueTable.putTax(ItemKeys.id(item), "sell", null);
+            if (direction == null || direction.equals("buy")) ValueTable.putTax(ItemKeys.id(item), "buy", null);
+        } catch (Exception e) {
+            c.getSource().sendFailure(Component.literal(e.toString()));
+            return 0;
+        }
+        Valuation.applyTaxes(m, ValueTable.get());
+        return taxShow(c);
+    }
+
+    private static int taxList(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        market(c);
+        ValueTable.Data t = ValueTable.get();
+        var keys = new java.util.TreeSet<String>();
+        keys.addAll(t.sellTaxes().keySet());
+        keys.addAll(t.buyTaxes().keySet());
+        if (keys.isEmpty()) reply(c.getSource(), Component.translatable("freetrade.tax.list_empty"));
+        for (String k : keys) {
+            reply(c.getSource(), Component.literal(" - " + k + "  sell=" + t.sellTaxes().getOrDefault(k, "-")
+                    + "  buy=" + t.buyTaxes().getOrDefault(k, "-")));
+        }
+        return keys.size();
     }
 
     private static int showForced(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
