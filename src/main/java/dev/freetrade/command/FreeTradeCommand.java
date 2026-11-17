@@ -46,8 +46,6 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 public final class FreeTradeCommand {
     private static final SuggestionProvider<CommandSourceStack> ACCOUNTS =
             (c, b) -> SharedSuggestionProvider.suggest(List.of(MarketStore.TREASURY, MarketStore.TAX), b);
-    private static final SuggestionProvider<CommandSourceStack> OPS =
-            (c, b) -> SharedSuggestionProvider.suggest(List.of(">=", ">", "<=", "<", "="), b);
     private static final SuggestionProvider<CommandSourceStack> MODES =
             (c, b) -> SharedSuggestionProvider.suggest(List.of("once", "repeat"), b);
     private static final SuggestionProvider<CommandSourceStack> TRIGGER_IDS =
@@ -234,11 +232,7 @@ public final class FreeTradeCommand {
                 ? Commands.argument("account", StringArgumentType.word()).suggests(ACCOUNTS)
                 : lit;
         base.then(Commands.literal("balance").executes(c -> balance(c, accountName(c, fixed))))
-                .then(Commands.literal("query")
-                        .executes(c -> balance(c, accountName(c, fixed)))
-                        .then(Commands.argument("op", StringArgumentType.word()).suggests(OPS)
-                                .then(Commands.argument("value", DoubleArgumentType.doubleArg())
-                                        .executes(c -> query(c, accountName(c, fixed))))))
+                .then(queryNode(fixed))
                 .then(Commands.literal("deposit")
                         .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.001))
                                 .executes(c -> adjust(c, accountName(c, fixed), true))))
@@ -269,9 +263,8 @@ public final class FreeTradeCommand {
         return (int) Math.max(0, Math.min(Integer.MAX_VALUE, Money.floorUnits(bal)));
     }
 
-    private static int query(CommandContext<CommandSourceStack> c, String acc) throws CommandSyntaxException {
+    private static int query(CommandContext<CommandSourceStack> c, String acc, String op) throws CommandSyntaxException {
         Market m = market(c);
-        String op = StringArgumentType.getString(c, "op");
         long value = Money.ofDouble(Math.abs(DoubleArgumentType.getDouble(c, "value")))
                 * (DoubleArgumentType.getDouble(c, "value") < 0 ? -1 : 1);
         var t = new MarketStore.Trigger("", acc, op, value, 0, "once", 0, "", 0, 0, true, true);
@@ -304,6 +297,10 @@ public final class FreeTradeCommand {
             throws CommandSyntaxException {
         Market m = market(c);
         ServerPlayer to = target != null ? target : c.getSource().getPlayer();
+        if (to == null) {
+            c.getSource().sendFailure(Component.translatable("freetrade.account.no_player"));
+            return 0;
+        }
         long requested = Money.ofDouble(DoubleArgumentType.getDouble(c, "amount"));
         long amount = requested;
         if (only != null) {
@@ -369,26 +366,40 @@ public final class FreeTradeCommand {
                 .then(triggerAddNode());
     }
 
+    /**
+     * Comparison operators are literal nodes: Brigadier's unquoted words cannot contain '>', '<' or '='.
+     */
+    static final List<String> OPERATORS = List.of(">=", ">", "<=", "<", "=");
+
+    private static ArgumentBuilder<CommandSourceStack, ?> queryNode(String fixed) {
+        var query = Commands.literal("query").executes(c -> balance(c, accountName(c, fixed)));
+        for (String op : OPERATORS) {
+            query.then(Commands.literal(op).then(Commands.argument("value", DoubleArgumentType.doubleArg())
+                    .executes(c -> query(c, accountName(c, fixed), op))));
+        }
+        return query;
+    }
+
     private static ArgumentBuilder<CommandSourceStack, ?> triggerAddNode() {
-        var full = Commands.argument("cost", DoubleArgumentType.doubleArg(0))
-                .then(Commands.argument("cooldown", IntegerArgumentType.integer(0))
-                        .then(Commands.argument("command", StringArgumentType.greedyString())
-                                .executes(c -> triggerAdd(c, DoubleArgumentType.getDouble(c, "cost"),
-                                        IntegerArgumentType.getInteger(c, "cooldown")))));
-        var shortForm = Commands.literal("run")
-                .then(Commands.argument("command", StringArgumentType.greedyString()).executes(c -> triggerAdd(c, 0, 0)));
-        var mode = Commands.argument("mode", StringArgumentType.word()).suggests(MODES).then(shortForm).then(full);
-        var value = Commands.argument("value", DoubleArgumentType.doubleArg()).then(mode);
-        var op = Commands.argument("op", StringArgumentType.word()).suggests(OPS).then(value);
-        var account = Commands.argument("account", StringArgumentType.word()).suggests(ACCOUNTS).then(op);
+        var account = Commands.argument("account", StringArgumentType.word()).suggests(ACCOUNTS);
+        for (String op : OPERATORS) {
+            var full = Commands.argument("cost", DoubleArgumentType.doubleArg(0))
+                    .then(Commands.argument("cooldown", IntegerArgumentType.integer(0))
+                            .then(Commands.argument("command", StringArgumentType.greedyString())
+                                    .executes(c -> triggerAdd(c, op, DoubleArgumentType.getDouble(c, "cost"),
+                                            IntegerArgumentType.getInteger(c, "cooldown")))));
+            var shortForm = Commands.literal("run").then(Commands.argument("command", StringArgumentType.greedyString())
+                    .executes(c -> triggerAdd(c, op, 0, 0)));
+            var mode = Commands.argument("mode", StringArgumentType.word()).suggests(MODES).then(shortForm).then(full);
+            account.then(Commands.literal(op).then(Commands.argument("value", DoubleArgumentType.doubleArg()).then(mode)));
+        }
         return Commands.literal("add").then(Commands.argument("id", StringArgumentType.word()).then(account));
     }
 
-    private static int triggerAdd(CommandContext<CommandSourceStack> c, double cost, int cooldownSeconds)
+    private static int triggerAdd(CommandContext<CommandSourceStack> c, String op, double cost, int cooldownSeconds)
             throws CommandSyntaxException {
         Market m = market(c);
         String id = StringArgumentType.getString(c, "id");
-        String op = StringArgumentType.getString(c, "op");
         String mode = StringArgumentType.getString(c, "mode").toLowerCase(Locale.ROOT);
         if (!List.of(">=", ">", "<=", "<", "=").contains(op) || !List.of("once", "repeat").contains(mode)) {
             c.getSource().sendFailure(Component.translatable("freetrade.trigger.syntax"));

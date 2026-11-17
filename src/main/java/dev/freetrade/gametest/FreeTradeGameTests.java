@@ -203,4 +203,42 @@ public class FreeTradeGameTests {
         h.assertTrue(be.target().isEmpty(), "target should stay empty, is " + be.target());
         h.succeed();
     }
+
+    /** Operators are literal nodes: every form must parse completely. */
+    @GameTest(template = "empty")
+    public static void accountAndTriggerCommandsParse(GameTestHelper h) {
+        var server = h.getLevel().getServer();
+        var dispatcher = server.getCommands().getDispatcher();
+        var source = server.createCommandSourceStack().withPermission(4);
+        for (String cmd : new String[]{
+                "freetrade account treasury query >= 1000",
+                "ft taxaccount query < 5.5",
+                "ft treasury query = 0",
+                "ft trigger add goal tax >= 500 once run say Tax goal reached",
+                "ft trigger add reward tax > 10 repeat 10 60 give @a minecraft:diamond 1"}) {
+            var parse = dispatcher.parse(cmd, source);
+            h.assertTrue(parse.getReader().getRemainingLength() == 0 && parse.getExceptions().isEmpty()
+                    && parse.getContext().getLastChild().getCommand() != null, "command should parse: " + cmd);
+        }
+        h.succeed();
+    }
+
+    /** A trigger on the tax account fires its command and takes its cost from the account. */
+    @GameTest(template = "empty", timeoutTicks = 200)
+    public static void triggerFiresAndTakesCost(GameTestHelper h) {
+        Market m = liveMarket(h);
+        var server = h.getLevel().getServer();
+        var source = server.createCommandSourceStack().withPermission(4).withSuppressedOutput();
+        BlockPos target = h.absolutePos(new BlockPos(2, 1, 2));
+        long before = m.account(dev.freetrade.db.MarketStore.TAX);
+        long threshold = before / 1000 + 5;
+        server.getCommands().performPrefixedCommand(source, "ft trigger remove gt_trigger");
+        server.getCommands().performPrefixedCommand(source, "ft trigger add gt_trigger tax >= " + threshold
+                + " once 3 0 setblock " + target.getX() + " " + target.getY() + " " + target.getZ() + " minecraft:gold_block");
+        server.getCommands().performPrefixedCommand(source, "ft taxaccount deposit 10");
+        h.succeedWhen(() -> {
+            h.assertTrue(h.getLevel().getBlockState(target).is(Blocks.GOLD_BLOCK), "trigger command should have placed a gold block");
+            h.assertValueEqual(m.account(dev.freetrade.db.MarketStore.TAX), before + 10_000 - 3_000, "tax balance after cost");
+        });
+    }
 }
