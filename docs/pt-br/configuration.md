@@ -30,10 +30,13 @@ valores e a linguagem da fórmula de preço. Para um passo a passo de configura�
 
 | Arquivo | Onde | Criado | Finalidade |
 |---------|------|--------|------------|
-| `freetrade-server.toml` | `serverconfig/` dentro da pasta do mundo | Na primeira vez que o mundo inicia | Todas as configurações, exceto os valores dos itens. |
-| `freetrade-server.toml` | `defaultconfigs/` em um modpack | Você cria | Padrões copiados para mundos novos. |
+| `freetrade-server.toml` | `config/` na pasta da instância: a pasta do servidor, ou a pasta do jogo no single player. Vale para todos os mundos da instância. | Na primeira inicialização. Um modpack pode distribuí-lo em `config/`. | Todas as configurações, exceto os valores dos itens. |
+| `freetrade-server.toml` | `serverconfig/` na pasta de um mundo | Você cria, se o mundo precisar de configurações próprias | Substitui o arquivo da instância só para esse mundo. O NeoForge grava um `readme.txt` lá. |
 | `values.json` | `config/freetrade/` | Na primeira carga, com uma lista padrão | Valores base, estoque de referência, estoque inicial e itens excluídos. |
 | `freetrade.db` | Pasta do mundo (SQLite) | Na primeira inicialização | O banco de dados do mercado. |
+
+Um mundo que tem o seu próprio `serverconfig/freetrade-server.toml` usa essa cópia no lugar do arquivo da instância.
+Mudanças no arquivo da instância não chegam a esse mundo.
 
 O servidor aplica o `freetrade-server.toml` quando o NeoForge carrega ou recarrega a configuração. As configurações do
 banco (`[database]`) são lidas só quando o servidor inicia, então mude-as com o servidor parado. Mudanças no

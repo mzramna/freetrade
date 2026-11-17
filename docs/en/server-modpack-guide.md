@@ -8,7 +8,7 @@ setting names and defaults are listed in the [configuration reference](configura
 ## Contents
 
 - [Installing](#installing)
-- [Modpack defaults (defaultconfigs)](#modpack-defaults-defaultconfigs)
+- [Server config in modpacks and worlds](#server-config-in-modpacks-and-worlds)
 - [Choosing a database](#choosing-a-database)
 - [Sharing one economy between servers](#sharing-one-economy-between-servers)
 - [Seeding values for a modpack](#seeding-values-for-a-modpack)
@@ -33,10 +33,15 @@ Java 25). On 26.1 only JEI is supported for drag-and-drop, because EMI has no 26
 
 Every server that shares an economy must run the same modpack, so that the recipes and values agree.
 
-## Modpack defaults (defaultconfigs)
+## Server config in modpacks and worlds
 
-Put a `freetrade-server.toml` in your modpack's `defaultconfigs/` folder to set the defaults for new worlds. NeoForge
-copies it into the world's `serverconfig/` folder when the world is created. Existing worlds keep the file they have.
+The server settings live in `config/freetrade-server.toml` in the instance folder. The instance is the server folder,
+or the game folder for singleplayer. The file is created on first start, and it applies to every world of that
+instance. To ship default settings in a modpack, include `config/freetrade-server.toml` in the pack.
+
+To give one world its own settings, put a copy at `<world>/serverconfig/freetrade-server.toml`. NeoForge uses that copy
+for that world instead of the instance file, and writes a `readme.txt` in the folder that explains this. Changes to the
+instance file do not reach a world that has its own copy.
 
 Put your `values.json` in the modpack's `config/freetrade/` folder. Free Trade loads it when the game starts, and it
 does not overwrite a file that is already there. See [Seeding values for a modpack](#seeding-values-for-a-modpack).
@@ -91,6 +96,17 @@ volumes:
 
 If the database cannot be reached when the server starts, Free Trade logs an error and trading stays off until you
 restart the server. Commands report "The market is offline right now."
+
+### Developer note: testing against PostgreSQL
+
+The repository has an integration test, `MarketPostgresTest`, that runs two market instances against one PostgreSQL
+database, the way two servers share an economy. Run it with:
+
+```
+FT_PG_URL=jdbc:postgresql://host:port/db FT_PG_USER=... FT_PG_PASSWORD=... ./gradlew test
+```
+
+The test is skipped when `FT_PG_URL` is unset, so `./gradlew test` runs without a database.
 
 ## Sharing one economy between servers
 

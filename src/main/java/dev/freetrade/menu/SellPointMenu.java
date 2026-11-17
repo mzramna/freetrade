@@ -24,6 +24,6 @@ public class SellPointMenu extends MachineMenu {
     @Override
     protected boolean accepts(ItemStack stack) {
         if (Currency.isCurrency(stack)) return true;
-        return be != null && !be.target().isEmpty() && ItemKeys.id(stack).equals(be.target()) && ItemKeys.isPlain(stack, false);
+        return resolve() != null && !be.target().isEmpty() && ItemKeys.id(stack).equals(be.target()) && ItemKeys.isPlain(stack, false);
     }
 }

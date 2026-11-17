@@ -33,7 +33,8 @@ public abstract class MachineMenu extends AbstractContainerMenu {
             BTN_WITHDRAW_ALL = 4, BTN_TAKE_STORED = 5, BTN_CLEAR_TARGET = 6;
     public static final int INPUT_X = 26, INPUT_Y = 62, INV_Y = 104;
 
-    @Nullable protected final MarketStorageBlockEntity be;
+    @Nullable protected MarketStorageBlockEntity be;
+    private final Inventory inventory;
     protected final BlockPos pos;
     protected final ContainerData data;
     private final SimpleContainer input = new SimpleContainer(1);
@@ -44,6 +45,7 @@ public abstract class MachineMenu extends AbstractContainerMenu {
         this.be = be;
         this.pos = pos;
         this.data = data;
+        this.inventory = inv;
         addSlot(new Slot(input, 0, INPUT_X, INPUT_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
@@ -133,14 +135,21 @@ public abstract class MachineMenu extends AbstractContainerMenu {
         return ds.get(Math.floorMod(currencyIndex(), ds.size())).item();
     }
 
+    /** Client: the block entity may arrive after the menu (e.g. block placed in the same tick). */
+    @Nullable
+    protected MarketStorageBlockEntity resolve() {
+        if (be == null && inventory.player.level().isClientSide) be = clientBe(inventory, pos);
+        return be;
+    }
+
     public ItemStack targetStack() {
-        if (be == null) return ItemStack.EMPTY;
+        if (resolve() == null) return ItemStack.EMPTY;
         Item i = be.targetItem();
         return i == Items.AIR ? ItemStack.EMPTY : new ItemStack(i);
     }
 
     public String ownerName() {
-        return be == null ? "" : be.ownerName();
+        return resolve() == null ? "" : be.ownerName();
     }
 
     public BlockPos pos() {
