@@ -50,13 +50,13 @@ public final class ModRegistries {
         return BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.5f, 1200f).sound(SoundType.WOOD);
     }
 
-    public static final DeferredBlock<SellPointBlock> SELL_POINT = BLOCKS.register("sell_point", () -> new SellPointBlock(machine()));
-    public static final DeferredBlock<AutoBuyerBlock> AUTO_BUYER = BLOCKS.register("auto_buyer", () -> new AutoBuyerBlock(machine()));
+    public static final DeferredBlock<SellPointBlock> SELL_POINT = BLOCKS.registerBlock("sell_point", SellPointBlock::new, ModRegistries::machine);
+    public static final DeferredBlock<AutoBuyerBlock> AUTO_BUYER = BLOCKS.registerBlock("auto_buyer", AutoBuyerBlock::new, ModRegistries::machine);
 
     public static final DeferredItem<BlockItem> SELL_POINT_ITEM = ITEMS.registerSimpleBlockItem(SELL_POINT);
     public static final DeferredItem<BlockItem> AUTO_BUYER_ITEM = ITEMS.registerSimpleBlockItem(AUTO_BUYER);
-    public static final DeferredItem<TradeGuideItem> TRADE_GUIDE = ITEMS.register("trade_guide",
-            () -> new TradeGuideItem(new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
+    public static final DeferredItem<TradeGuideItem> TRADE_GUIDE = ITEMS.registerItem("trade_guide",
+            TradeGuideItem::new, p -> p.stacksTo(1).rarity(Rarity.UNCOMMON));
 
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SellPointBlockEntity>> SELL_POINT_BE =

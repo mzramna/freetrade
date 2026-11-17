@@ -10,22 +10,64 @@ import dev.freetrade.market.Market;
 import dev.freetrade.registry.ModRegistries;
 import dev.freetrade.server.FreeTradeServer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Runs with ./gradlew runGameTestServer. Each test works inside the 5x3x5 "empty" template; positions are
  * relative to the test origin. Machine tests set the machine interval to 1 tick and restore it when done.
  */
-@GameTestHolder(FreeTrade.MODID)
-@PrefixGameTestTemplate(false)
 public class FreeTradeGameTests {
+    private static final net.minecraft.resources.Identifier STRUCTURE =
+            net.minecraft.resources.Identifier.fromNamespaceAndPath(FreeTrade.MODID, "empty");
+
+    private record Test(String name, int maxTicks, java.util.function.Consumer<GameTestHelper> body) {}
+
+    private static final java.util.List<Test> TESTS = new java.util.ArrayList<>();
+    private static final net.neoforged.neoforge.registries.DeferredRegister<java.util.function.Consumer<GameTestHelper>> FUNCTIONS =
+            net.neoforged.neoforge.registries.DeferredRegister.create(net.minecraft.core.registries.Registries.TEST_FUNCTION, FreeTrade.MODID);
+
+    private static void test(String name, int maxTicks, java.util.function.Consumer<GameTestHelper> body) {
+        TESTS.add(new Test(name, maxTicks, body));
+        FUNCTIONS.register(name, () -> body);
+    }
+
+    static {
+        test("market_is_open", 100, FreeTradeGameTests::marketIsOpen);
+        test("emerald_is_money", 100, FreeTradeGameTests::emeraldIsMoney);
+        test("sell_point_absorbs_and_sells_with_redstone", 200, FreeTradeGameTests::sellPointAbsorbsAndSellsWithRedstone);
+        test("sell_point_money_extraction_needs_redstone", 200, FreeTradeGameTests::sellPointMoneyExtractionNeedsRedstone);
+        test("change_machine", 100, FreeTradeGameTests::changeMachine);
+        test("barrels_multiply_capacity", 200, FreeTradeGameTests::barrelsMultiplyCapacity);
+        test("auto_buyer_buys", 200, FreeTradeGameTests::autoBuyerBuys);
+        test("currency_refused_as_target", 100, FreeTradeGameTests::currencyRefusedAsTarget);
+        test("account_and_trigger_commands_parse", 100, FreeTradeGameTests::accountAndTriggerCommandsParse);
+        test("trigger_fires_and_takes_cost", 200, FreeTradeGameTests::triggerFiresAndTakesCost);
+    }
+
+    /**
+     * Since 1.21.5 game tests are registry entries: each body is a minecraft:test_function and a
+     * minecraft:test_instance points to it. Called from the mod constructor; no-op outside test runs.
+     */
+    public static void register(net.neoforged.bus.api.IEventBus modBus) {
+        if (!net.neoforged.neoforge.gametest.GameTestHooks.isGametestEnabled()) return;
+        FUNCTIONS.register(modBus);
+        modBus.addListener(FreeTradeGameTests::registerTests);
+    }
+
+    private static void registerTests(net.neoforged.neoforge.event.RegisterGameTestsEvent event) {
+        var env = event.registerEnvironment(net.minecraft.resources.Identifier.fromNamespaceAndPath(FreeTrade.MODID, "default"),
+                new net.minecraft.gametest.framework.TestEnvironmentDefinition.AllOf(java.util.List.of()));
+        for (Test t : TESTS) {
+            var id = net.minecraft.resources.Identifier.fromNamespaceAndPath(FreeTrade.MODID, t.name());
+            event.registerTest(id, new net.minecraft.gametest.framework.FunctionGameTestInstance(
+                    net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.TEST_FUNCTION, id),
+                    new net.minecraft.gametest.framework.TestData<>(env, STRUCTURE, t.maxTicks(), 0, true)));
+        }
+    }
+
     private static final BlockPos MACHINE = new BlockPos(2, 1, 2);
     private static final BlockPos REDSTONE = new BlockPos(1, 1, 2);
     private static final long BASE_CAPACITY = 64L * MarketStorageBlockEntity.BASE_STACKS;
@@ -51,8 +93,6 @@ public class FreeTradeGameTests {
             restoreMachineInterval();
         });
     }
-
-    @GameTest(template = "empty")
     public static void marketIsOpen(GameTestHelper h) {
         Market m = liveMarket(h);
         h.assertTrue(m.isTradeable("minecraft:oak_log"), "minecraft:oak_log should be tradeable");
@@ -67,8 +107,6 @@ public class FreeTradeGameTests {
                 "oak_planks base value should be about oak_log/4 = " + expected + ", was " + planks);
         h.succeed();
     }
-
-    @GameTest(template = "empty")
     public static void emeraldIsMoney(GameTestHelper h) {
         Market m = liveMarket(h);
         h.assertTrue(Currency.isCurrency(Items.EMERALD), "emerald should be a currency item");
@@ -76,17 +114,15 @@ public class FreeTradeGameTests {
         h.assertTrue(!m.isTradeable("minecraft:emerald"), "emerald must not be tradeable as goods");
         h.succeed();
     }
-
-    @GameTest(template = "empty", timeoutTicks = 200)
     public static void sellPointAbsorbsAndSellsWithRedstone(GameTestHelper h) {
         Market m = liveMarket(h);
         FreeTradeConfig.machineIntervalTicks = 1;
         h.setBlock(MACHINE, ModRegistries.SELL_POINT.get());
-        SellPointBlockEntity be = h.getBlockEntity(MACHINE);
+        SellPointBlockEntity be = h.getBlockEntity(MACHINE, SellPointBlockEntity.class);
         h.assertTrue(m.isTradeable("minecraft:cobblestone"), "cobblestone should be tradeable");
         h.assertTrue(be.setTarget(new ItemStack(Items.COBBLESTONE)), "setTarget should accept cobblestone");
 
-        ItemStack rest = be.itemHandler(null).insertItem(0, new ItemStack(Items.COBBLESTONE, 64), false);
+        ItemStack rest = HandlerShim.of(be).insertItem(0, new ItemStack(Items.COBBLESTONE, 64), false);
         h.assertTrue(rest.isEmpty(), "all 64 cobblestone should be absorbed, " + rest.getCount() + " left over");
         h.assertValueEqual(be.stored(), 64L, "stored after insert");
 
@@ -96,12 +132,10 @@ public class FreeTradeGameTests {
             h.assertTrue(be.balance() > 0, "balance should be paid after the sale, is " + be.balance() + " (" + status(be) + ")");
         });
     }
-
-    @GameTest(template = "empty", timeoutTicks = 200)
     public static void sellPointMoneyExtractionNeedsRedstone(GameTestHelper h) {
         h.setBlock(MACHINE, ModRegistries.SELL_POINT.get());
-        SellPointBlockEntity be = h.getBlockEntity(MACHINE);
-        IItemHandler hd = be.itemHandler(null);
+        SellPointBlockEntity be = h.getBlockEntity(MACHINE, SellPointBlockEntity.class);
+        HandlerShim hd = HandlerShim.of(be);
 
         ItemStack rest = hd.insertItem(0, new ItemStack(Items.EMERALD, 5), false);
         h.assertTrue(rest.isEmpty(), "5 emeralds should become balance, " + rest.getCount() + " refused");
@@ -121,12 +155,10 @@ public class FreeTradeGameTests {
             h.succeed();
         });
     }
-
-    @GameTest(template = "empty")
     public static void changeMachine(GameTestHelper h) {
         h.setBlock(MACHINE, ModRegistries.SELL_POINT.get());
-        SellPointBlockEntity be = h.getBlockEntity(MACHINE);
-        ItemStack rest = be.itemHandler(null).insertItem(0, new ItemStack(Items.EMERALD_BLOCK, 1), false);
+        SellPointBlockEntity be = h.getBlockEntity(MACHINE, SellPointBlockEntity.class);
+        ItemStack rest = HandlerShim.of(be).insertItem(0, new ItemStack(Items.EMERALD_BLOCK, 1), false);
         h.assertTrue(rest.isEmpty(), "emerald block should be accepted by the change machine");
         h.assertValueEqual(be.balance(), 9000L, "balance after one emerald block");
 
@@ -138,12 +170,10 @@ public class FreeTradeGameTests {
         h.assertValueEqual(be.balance(), 0L, "balance after withdrawal");
         h.succeed();
     }
-
-    @GameTest(template = "empty", timeoutTicks = 200)
     public static void barrelsMultiplyCapacity(GameTestHelper h) {
         liveMarket(h);
         h.setBlock(MACHINE, ModRegistries.SELL_POINT.get());
-        SellPointBlockEntity be = h.getBlockEntity(MACHINE);
+        SellPointBlockEntity be = h.getBlockEntity(MACHINE, SellPointBlockEntity.class);
         h.assertTrue(be.setTarget(new ItemStack(Items.COBBLESTONE)), "setTarget should accept cobblestone");
         h.assertValueEqual(be.capacity(), BASE_CAPACITY, "capacity without neighbours");
 
@@ -166,17 +196,15 @@ public class FreeTradeGameTests {
             });
         });
     }
-
-    @GameTest(template = "empty", timeoutTicks = 200)
     public static void autoBuyerBuys(GameTestHelper h) {
         Market m = liveMarket(h);
         FreeTradeConfig.machineIntervalTicks = 1;
         h.setBlock(MACHINE, ModRegistries.AUTO_BUYER.get());
-        AutoBuyerBlockEntity be = h.getBlockEntity(MACHINE);
+        AutoBuyerBlockEntity be = h.getBlockEntity(MACHINE, AutoBuyerBlockEntity.class);
         h.assertTrue(m.isTradeable("minecraft:oak_log"), "oak_log should be tradeable");
         h.assertTrue(be.setTarget(new ItemStack(Items.OAK_LOG)), "setTarget should accept oak_log");
 
-        IItemHandler hd = be.itemHandler(null);
+        HandlerShim hd = HandlerShim.of(be);
         ItemStack rest = hd.insertItem(0, new ItemStack(Items.EMERALD, 64), false);
         h.assertTrue(rest.isEmpty(), "64 emeralds should be accepted, " + rest.getCount() + " refused");
         h.assertValueEqual(be.balance(), 64_000L, "balance after 64 emeralds");
@@ -193,23 +221,20 @@ public class FreeTradeGameTests {
             restoreMachineInterval();
         });
     }
-
-    @GameTest(template = "empty")
     public static void currencyRefusedAsTarget(GameTestHelper h) {
         liveMarket(h);
         h.setBlock(MACHINE, ModRegistries.SELL_POINT.get());
-        SellPointBlockEntity be = h.getBlockEntity(MACHINE);
+        SellPointBlockEntity be = h.getBlockEntity(MACHINE, SellPointBlockEntity.class);
         h.assertTrue(!be.setTarget(new ItemStack(Items.EMERALD)), "money must be refused as a target");
         h.assertTrue(be.target().isEmpty(), "target should stay empty, is " + be.target());
         h.succeed();
     }
 
     /** Operators are literal nodes: every form must parse completely. */
-    @GameTest(template = "empty")
     public static void accountAndTriggerCommandsParse(GameTestHelper h) {
         var server = h.getLevel().getServer();
         var dispatcher = server.getCommands().getDispatcher();
-        var source = server.createCommandSourceStack().withPermission(4);
+        var source = server.createCommandSourceStack().withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.OWNER);
         for (String cmd : new String[]{
                 "freetrade account treasury query >= 1000",
                 "ft taxaccount query < 5.5",
@@ -224,11 +249,10 @@ public class FreeTradeGameTests {
     }
 
     /** A trigger on the tax account fires its command and takes its cost from the account. */
-    @GameTest(template = "empty", timeoutTicks = 200)
     public static void triggerFiresAndTakesCost(GameTestHelper h) {
         Market m = liveMarket(h);
         var server = h.getLevel().getServer();
-        var source = server.createCommandSourceStack().withPermission(4).withSuppressedOutput();
+        var source = server.createCommandSourceStack().withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.OWNER).withSuppressedOutput();
         BlockPos target = h.absolutePos(new BlockPos(2, 1, 2));
         long before = m.account(dev.freetrade.db.MarketStore.TAX);
         long threshold = before / 1000 + 5;

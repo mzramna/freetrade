@@ -36,6 +36,7 @@ public class FreeTrade {
         modBus.addListener(FreeTradeNetwork::register);
         modBus.addListener(FreeTrade::onCapabilities);
         FreeTradeServer.register();
+        dev.freetrade.gametest.FreeTradeGameTests.register(modBus);
         TraderInteraction.register();
         NeoForge.EVENT_BUS.addListener(FreeTradeCommand::register);
         NeoForge.EVENT_BUS.addListener(FreeTrade::onLogin);

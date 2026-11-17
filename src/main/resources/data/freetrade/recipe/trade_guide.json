@@ -1,6 +1,12 @@
 {
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "ingredients": [ { "item": "minecraft:book" }, { "item": "minecraft:emerald" } ],
-  "result": { "id": "freetrade:trade_guide", "count": 1 }
+  "ingredients": [
+    "minecraft:book",
+    "minecraft:emerald"
+  ],
+  "result": {
+    "id": "freetrade:trade_guide",
+    "count": 1
+  }
 }
