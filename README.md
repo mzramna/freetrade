@@ -26,16 +26,14 @@ Install it on **both the server and the clients**. Every server that shares an e
 - **Values from recipes.** Items without a declared value get one from the cheapest recipe that makes them, and the
   price follows its ingredients.
 - **Slippage.** Large trades are priced unit by unit, so the price moves while you trade.
-- **Whole-U.M. sales to the Trade Representative.** Only the units that earn whole U.M. are taken, and the rest is
-  returned.
+- **Whole-U.M. prices.** Every trade is computed in full and then rounded half-up to whole U.M. Shown prices are always whole U.M., and items worth less than 1 U.M. are traded in lots.
 - **Trade Representative.** An unemployed villager becomes a representative at an Auto Buyer. Sell one item type or
   buy from the catalog in its window.
 - **Sell Point and Auto Buyer.** Machines that sell an item on a redstone signal, and buy an item from money you put
   in them. They have capacity that grows with adjacent chests and barrels.
 - **Trade Association Guide.** A book with a "How it works" tour and a searchable catalog of buy and sell prices, stock
   and a stock filter.
-- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, an anti-storage backoff for
-  round trips, and an optional finite treasury.
+- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, an anti-storage backoff for round trips and rounding abuse, and an optional finite treasury.
 - **Money.** Emeralds and emerald blocks by default, any items the server chooses, and Lightman's Currency coins and
   bank accounts when that mod is installed.
 - **Database.** SQLite for a single world, or PostgreSQL, which several servers can share as one economy.

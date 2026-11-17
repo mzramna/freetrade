@@ -211,10 +211,7 @@ associação sempre paga. Uma tesouraria finita é o dinheiro da própria associ
 - `treasury_initial` define o saldo inicial apenas quando o banco de dados é criado pela primeira vez. Depois, os operadores
   podem mudar o saldo com `/freetrade treasury deposit` e `remove`.
 
-**Backoff.** O backoff anti-armazenamento vem ligado por padrão. Ele conta uma ida e volta quando um jogador vende um item e
-o recompra dentro de `backoff_window_seconds`. A partir de `backoff_threshold` idas e voltas, cada nova ida e volta aumenta o
-preço de compra daquele jogador para aquele item em `backoff_percent` por nível, até `backoff_max_level` níveis. Um nível
-cai depois de cada janela inteira sem idas e voltas.
+**Backoff.** O backoff anti-armazenamento vem ligado por padrão. Ele conta uma ida e volta quando um jogador vende um item e o recompra dentro de `backoff_window_seconds`, e também conta um ganho de arredondamento (uma negociação em que o arredondamento para U.M. inteiras favoreceu o jogador). A partir de `backoff_threshold` idas e voltas, cada nova ida e volta aumenta o preço de compra daquele jogador para aquele item em `backoff_percent` por nível, e divide o pagamento por vender aquele item pelo mesmo fator, até `backoff_max_level` níveis. Um nível cai depois de cada janela inteira sem idas e voltas. Só o jogador e o item afetados são atingidos.
 
 Exemplos de ajuste:
 
@@ -229,6 +226,7 @@ Exemplos de ajuste:
 - `min_unit_price` impede que itens abundantes fiquem de graça.
 - `labor_percent` acrescenta uma porcentagem por etapa de fabricação, então itens fabricados custam mais que seus ingredientes.
 - `dynamic_propagation = false` impede que os itens derivados acompanhem o preço atual dos ingredientes.
+- U.M. inteiras e lotes não são configurações: toda negociação é arredondada para U.M. inteiras (metade para cima), e itens que valem menos de 1 U.M. são negociados em lotes. Veja o [guia do jogador](player-guide.md#um-inteiras-e-lotes).
 
 ## A conta de imposto e os comandos de operador
 

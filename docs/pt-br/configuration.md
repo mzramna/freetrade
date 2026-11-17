@@ -126,10 +126,10 @@ check_interval_ticks = 100
 | `tax_on_sell_percent` | decimal | `0.0` | 0 a 100 | Porcentagem de cada venda para a associação que vai para a conta de imposto (conta dos operadores). O jogador recebe o resto. | `5.0` |
 | `tax_on_buy_percent` | decimal | `0.0` | 0 a 1000 | Porcentagem somada a cada compra da associação. O valor extra vai para a conta de imposto. | `2.5` |
 | `backoff_enabled` | booleano | `true` | true / false | Liga ou desliga o backoff anti-armazenamento. | `true` |
-| `backoff_threshold` | inteiro | `3` | 1 a 1000 | Idas e voltas (vender e recomprar o mesmo item dentro da janela) antes que a penalidade comece a crescer. | `5` |
+| `backoff_threshold` | inteiro | `3` | 1 a 1000 | Idas e voltas antes que a penalidade comece a crescer. Uma ida e volta é vender e recomprar o mesmo item dentro da janela. Uma negociação em que o arredondamento favoreceu o jogador também conta como ida e volta. | `5` |
 | `backoff_window_seconds` | inteiro | `600` | 1 a 2592000 | Duração da janela que define uma ida e volta, e de uma janela ociosa (em segundos). | `1200` |
-| `backoff_percent` | decimal | `10.0` | 0 a 1000 | Porcentagem somada ao preço de compra para cada nível de penalidade. | `15.0` |
-| `backoff_max_level` | inteiro | `20` | 1 a 1000 | Nível máximo de penalidade. Com os padrões, o preço sobe no máximo 200%. | `10` |
+| `backoff_percent` | decimal | `10.0` | 0 a 1000 | Porcentagem somada ao preço de compra para cada nível de penalidade. O pagamento por vender o item é dividido por 1 + porcentagem / 100 x nível. | `15.0` |
+| `backoff_max_level` | inteiro | `20` | 1 a 1000 | Nível máximo de penalidade. Com os padrões, o preço de compra sobe no máximo 200%, e o pagamento por venda cai para no máximo um terço. | `10` |
 | `treasury_initial` | inteiro (U.M.) | `-1` | -1 a 9223372036854775 | `-1` significa tesouraria infinita: as negociações não a tocam, então ela sempre paga. Qualquer outro valor torna a tesouraria finita: vender para a associação é pago com ela, comprar dela a reabastece, e, quando ela está vazia, a associação para de comprar dos jogadores. O valor é o saldo inicial, gravado apenas quando o banco de dados é criado pela primeira vez. Mudanças posteriores não redefinem o saldo; use `/freetrade treasury deposit` ou `remove`. Veja [Configurações econômicas](server-modpack-guide.md#configurações-econômicas-imposto-tesouraria-backoff). | `100000` |
 
 ### [machines]
@@ -283,6 +283,8 @@ quando a configuração é carregada, então um erro de digitação é detectado
 - Uma negociação é precificada unidade por unidade. Vender `n` unidades com estoque `S` paga as unidades avaliadas no
   estoque de `S+1` até `S+n`. Comprar `n` unidades com estoque `S` cobra as unidades avaliadas de `S` até `S-n+1`. Por
   isso, vender e recomprar as mesmas unidades custa o mesmo, e negociações grandes movem o preço enquanto acontecem.
+- Cada negociação calcula primeiro o total real (preços unitários com derrapagem, impostos, durabilidade e o backoff do jogador), depois arredonda esse total para U.M. inteiras, metade para cima. Preços mostrados são sempre U.M. inteiras.
+- Itens que valem menos de 1 U.M. são negociados em lotes: o número inteiro de unidades mais próximo que vale cerca de 1 U.M., e no mínimo 2. Vendas levam lotes inteiros, e compras arredondam para cima em lotes inteiros. O tamanho do lote acompanha o preço atual.
 - Valores monetários são guardados em milésimos de U.M.
 
 ### Exemplos resolvidos
@@ -301,3 +303,5 @@ Considere `b = 10` U.M. e `r = 1000` (os padrões).
 
 Vender 2 unidades com estoque 1000 pela fórmula padrão as avalia em `x = 1001` e `x = 1002`, porque cada unidade é
 precificada com o estoque depois de ser somada: `10 * 1000/1001 + 10 * 1000/1002`, cerca de 19,97 U.M.
+
+Arredondamento: 3 itens que valem 1,5 U.M. cada custam 4,5 U.M. no total, então o comprador paga 5 U.M. (metade para cima). Um item que vale 1,4 U.M. custa 1 U.M.

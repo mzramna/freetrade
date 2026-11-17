@@ -206,10 +206,7 @@ association always pays. A finite treasury is the association's own cash:
 - `treasury_initial` sets the starting balance only when the database is first created. Later, operators can change
   the balance with `/freetrade treasury deposit` and `remove`.
 
-**Backoff.** The anti-storage backoff is on by default. It counts a round trip when a player sells an item and buys it
-back within `backoff_window_seconds`. From `backoff_threshold` round trips on, each further round trip raises that
-player's buy price for that item by `backoff_percent` per level, up to `backoff_max_level` levels. A level goes down
-after each full window without round trips.
+**Backoff.** The anti-storage backoff is on by default. It counts a round trip when a player sells an item and buys it back within `backoff_window_seconds`, and it also counts a rounding gain (a trade where rounding to whole U.M. favoured the player). From `backoff_threshold` round trips on, each further round trip raises that player's buy price for that item by `backoff_percent` per level, and divides the payout for selling that item by the same factor, up to `backoff_max_level` levels. A level goes down after each full window without round trips. Only that player and that item are affected.
 
 Examples of tuning:
 
@@ -224,6 +221,7 @@ Examples of tuning:
 - `min_unit_price` keeps abundant items from becoming free.
 - `labor_percent` adds a percentage per crafting step, so crafted items cost more than their ingredients.
 - `dynamic_propagation = false` stops derived items from following the current price of their ingredients.
+- Whole U.M. and lots are not settings: every trade is rounded to whole U.M. (half up), and items worth less than 1 U.M. are traded in lots. See the [player guide](player-guide.md#whole-um-and-lots).
 
 ## The tax account and operator commands
 

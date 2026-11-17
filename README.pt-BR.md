@@ -26,15 +26,14 @@ Instale **no servidor e nos clientes**. Todo servidor que compartilha uma econom
 - **Valores pelas receitas.** Itens sem valor declarado recebem um valor da receita mais barata que os fabrica, e o preço
   acompanha os ingredientes.
 - **Derrapagem.** Negociações grandes são precificadas unidade por unidade, então o preço se move enquanto você negocia.
-- **Vendas inteiras ao Representante Comercial.** Só as unidades que ganham U.M. inteiras são pegas, e o resto é devolvido.
+- **Preços em U.M. inteiras.** Cada negociação é calculada por inteiro e depois arredondada para U.M. inteiras (metade para cima). Os preços mostrados são sempre U.M. inteiras, e itens que valem menos de 1 U.M. são negociados em lotes.
 - **Representante Comercial.** Um aldeão desempregado vira representante na Compra Automática. Venda um tipo de item ou
   compre do catálogo na janela dele.
 - **Ponto de Venda e Compra Automática.** Máquinas que vendem um item com sinal de redstone, e compram um item com o dinheiro
   que você coloca nelas. Têm capacidade que cresce com baús e barris encostados.
 - **Guia da Associação Comercial.** Um livro com um tour em "Como funciona" e um catálogo pesquisável, com preços de compra e
   venda, estoque e filtro de estoque.
-- **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, um backoff
-  anti-armazenamento para idas e voltas, e uma tesouraria finita opcional.
+- **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, um backoff anti-armazenamento para idas e voltas e para abuso de arredondamento, e uma tesouraria finita opcional.
 - **Dinheiro.** Esmeraldas e blocos de esmeralda por padrão, outros itens se o servidor escolher, e moedas e contas bancárias
   do Lightman's Currency quando esse mod está instalado.
 - **Banco de dados.** SQLite para um mundo só, ou PostgreSQL, que vários servidores podem compartilhar como uma economia.

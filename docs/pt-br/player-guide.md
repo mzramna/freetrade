@@ -8,6 +8,7 @@ Ponto de Venda e a Compra Automática. Para as configurações do servidor, veja
 
 - [O que é a Associação Comercial](#o-que-é-a-associação-comercial)
 - [Dinheiro: U.M. e itens de dinheiro](#dinheiro-um-e-itens-de-dinheiro)
+- [U.M. inteiras e lotes](#um-inteiras-e-lotes)
 - [O Guia da Associação Comercial (livro)](#o-guia-da-associação-comercial-livro)
 - [Como achar ou criar um Representante Comercial](#como-achar-ou-criar-um-representante-comercial)
 - [Vender para o Representante Comercial](#vender-para-o-representante-comercial)
@@ -57,6 +58,24 @@ O dinheiro nunca é negociado como mercadoria. Você não pode vender esmeraldas
 Quando recebe troco, ele volta em itens de dinheiro, começando pelos maiores. Por exemplo, 10 U.M. de troco com o dinheiro
 padrão são um bloco de esmeralda (9 U.M.) e uma esmeralda (1 U.M.).
 
+## U.M. inteiras e lotes
+
+Os preços são sempre U.M. inteiras. Cada negociação funciona do mesmo jeito, na compra e na venda:
+
+1. A associação calcula primeiro o **total real** da negociação: o valor de cada unidade (com a derrapagem), o imposto de venda ou de compra, a durabilidade de um item danificado e o seu backoff pessoal.
+2. Só depois esse total é arredondado para U.M. inteiras, **metade para cima**: 0,5 ou mais arredonda para cima, e menos de 0,5 arredonda para baixo.
+
+Por exemplo, 3 itens que valem 1,5 U.M. cada custam 4,5 U.M. no total, então você paga 5 U.M., e não 3 x 2 = 6. Um item que vale 1,4 U.M. custa 1 U.M., e dois deles (2,8 U.M.) custam 3 U.M.
+
+Itens que valem menos de 1 U.M. são negociados só em **lotes**. O tamanho do lote é o número inteiro de unidades mais próximo que vale cerca de 1 U.M., e nunca menos de 2. Um graveto que vale 0,5 U.M. é negociado 2 por vez, nunca um sozinho.
+
+- Os preços mostrados para esses itens são por lote.
+- A venda leva só lotes inteiros. As unidades que não formam um lote inteiro voltam para você (no Representante Comercial) ou ficam guardadas (no Ponto de Venda).
+- A compra arredonda a quantidade para cima, em lotes inteiros, então comprar 1 graveto dá 2.
+- O tamanho do lote acompanha o preço atual, então pode mudar quando o estoque muda.
+
+O arredondamento também pode ser usado contra as regras. Negociar de um jeito que o arredondamento favoreça você, por exemplo vender um item que vale 1,5 U.M. de cada vez para ganhar 2 U.M. em cada venda, conta como uma ida e volta para o [backoff](#backoff-anti-armazenamento).
+
 ## O Guia da Associação Comercial (livro)
 
 O Guia da Associação Comercial é um livro que mostra o mercado. Crafte-o com **um livro e uma esmeralda** (em qualquer
@@ -75,7 +94,7 @@ disposição). Clique com o botão direito para abrir o guia. Ele tem duas abas.
 **Catálogo** lista todos os itens que a associação negocia:
 
 - uma caixa de busca (por nome ou id do item);
-- o preço de venda e o preço de compra de uma unidade (a compra mostra "Sem estoque" quando não há estoque);
+- o preço de venda e o preço de compra de uma unidade, ou de um lote quando o item é negociado em lotes (a compra mostra "Sem estoque" quando não há estoque);
 - o tamanho do lote, quando uma unidade vale menos de 1 U.M. (por exemplo, "2 unidades = 1 U.M.");
 - o estoque atual;
 - um filtro de **Todos**, **Em estoque** e **Sem estoque**;
@@ -122,9 +141,7 @@ O lado esquerdo da janela é a grade de venda:
   danificados por completo;
 - itens que não podem ser negociados são recusados.
 
-Quando você aperta **Vender**, a associação paga **apenas U.M. inteiras**. Ela pega só as unidades necessárias para
-ganhar a U.M. inteira que paga, e devolve o resto. Por exemplo, se 3 gravetos pagariam 1,5 U.M., a associação pega 2
-gravetos, paga 1 U.M. e devolve o terceiro graveto.
+Quando você aperta **Vender**, a associação pega as suas unidades em lotes inteiros, calcula o total real delas e paga esse total arredondado para U.M. inteiras (veja [U.M. inteiras e lotes](#um-inteiras-e-lotes)). As unidades que não formam um lote inteiro são devolvidas. Por exemplo, gravetos valem 0,5 U.M. cada e são negociados 2 por vez. Se você oferecer 3 gravetos, a associação pega 2 gravetos, paga 1 U.M. e devolve o terceiro graveto.
 
 O pagamento sai em itens de dinheiro, começando pelos maiores. Se a opção de banco do Lightman's estiver ligada, o
 pagamento vai para a sua conta bancária.
@@ -134,8 +151,10 @@ pagamento vai para a sua conta bancária.
 O lado direito da janela é o catálogo:
 
 1. Pesquise ou filtre a lista e selecione um item.
-2. Defina a quantidade com **-64**, **-1**, **+1** e **+64**. Você pode comprar até 2.304 unidades de uma vez.
+2. Defina a quantidade com **-64**, **-1**, **+1** e **+64**. Os botões **-1** e **+1** andam um lote, e **-64** e **+64** andam 64 lotes. Para itens que valem 1 U.M. ou mais, um lote é uma unidade. Você pode comprar até 2.304 unidades de uma vez.
 3. Confira o custo estimado e aperte **Comprar**.
+
+A quantidade é arredondada para cima em lotes inteiros. Por exemplo, ao comprar 1 graveto, quando gravetos são negociados 2 por vez, você recebe 2.
 
 Regras de pagamento:
 
@@ -145,8 +164,7 @@ Regras de pagamento:
   mensagem diz quanto falta;
 - se o preço mudou entre o seu clique e a compra, você verá uma mensagem e poderá tentar de novo;
 - os preços de compra incluem o imposto de compra e, quando se aplica a você, o seu backoff pessoal;
-- um troco menor que o menor item de dinheiro não pode ser devolvido. Com apenas esmeraldas como dinheiro, o preço da
-  compra pode ter uma fração de U.M. que se perde. Tenha troco exato sempre que possível.
+- os preços são U.M. inteiras, então com esmeraldas como dinheiro nenhum troco se perde. Se o servidor usar itens de dinheiro que valem uma fração de U.M., um troco menor que o menor item de dinheiro não pode ser devolvido. Tenha troco exato sempre que possível.
 
 **Botão Banco:** só aparece quando o Lightman's Currency está instalado e o servidor permite. Quando está ligado, a
 compra é paga pela sua conta bancária do Lightman's, e o troco é depositado nela. Se o banco não puder pagar, a compra
@@ -177,9 +195,7 @@ ou barril encostado no bloco acrescenta mais um conjunto de 54 pilhas, até cinc
 capacidade base. Baús incluem baús armadilha. Se você remover um recipiente e os itens guardados não couberem mais, o
 bloco para de aceitar itens até que caibam de novo.
 
-**Venda.** Enquanto o bloco está energizado, ele vende até 64 unidades cerca de uma vez por segundo (o servidor pode
-mudar a velocidade e o tamanho do lote). O dinheiro vai para o saldo do bloco, que guarda valores exatos (frações
-incluídas).
+**Venda.** Enquanto o bloco está energizado, ele vende até 64 unidades cerca de uma vez por segundo (o servidor pode mudar a velocidade e o tamanho do lote). Ele vende só lotes inteiros: a sobra menor que um lote fica guardada até chegar mais. O dinheiro vai para o saldo do bloco, em U.M. inteiras quando os itens de dinheiro são U.M. inteiras.
 
 **Dinheiro no bloco.**
 
@@ -197,8 +213,7 @@ selecionado, e só enquanto o bloco estiver energizado e tiver saldo suficiente.
 **Dono.** O jogador que coloca o bloco é o dono. Só o dono e os operadores do servidor podem abrir o bloco ou quebrá-lo.
 Um bloco colocado sem jogador (por exemplo, por um comando) não tem dono, e qualquer um pode usá-lo.
 
-As mensagens de status da interface dizem por que o bloco não está vendendo, por exemplo "Aguardando sinal de
-redstone", "Sem estoque" ou "Armazenamento cheio".
+As mensagens de status da interface dizem por que o bloco não está vendendo, por exemplo "Aguardando sinal de redstone", "Sem estoque", "Armazenamento cheio" ou "Aguardando um lote completo".
 
 ## Compra Automática
 
@@ -209,7 +224,7 @@ Para fabricá-la, veja [Como achar ou criar um Representante Comercial](#como-ac
 **Definir o alvo.** Use o mesmo slot fantasma do Ponto de Venda. Você só pode trocá-lo quando não há itens guardados.
 
 **Dinheiro.** Os itens de dinheiro que você coloca nela viram saldo. O bloco compra o alvo enquanto tiver saldo, a
-associação tiver estoque e houver espaço no armazenamento. Ele compra até 64 unidades por ciclo, ao preço de compra do
+associação tiver estoque e houver espaço no armazenamento. Ele compra em lotes inteiros, até 64 unidades por ciclo, ao preço de compra do
 catálogo, e **não** precisa de sinal de redstone para comprar.
 
 **Retirar itens.** O dono pode pegar de volta os itens comprados e o saldo que sobrou. Funis só podem tirar os itens
@@ -238,12 +253,14 @@ O guia e o comando `/freetrade price` sempre mostram os números atuais.
 
 ## Backoff anti-armazenamento
 
-A associação não é um depósito. Se você vende um item e o recompra dentro da **janela de backoff** (padrão 600 segundos,
-ou seja, 10 minutos), isso conta como uma **ida e volta**. Ao atingir o **limite** de idas e voltas (padrão 3), cada nova
-ida e volta aumenta o seu preço de compra daquele item em **10% por nível**, até no máximo 20 níveis (+200%).
+A associação não é um depósito. Se você vende um item e o recompra dentro da **janela de backoff** (padrão 600 segundos, ou seja, 10 minutos), isso conta como uma **ida e volta**. Um **ganho de arredondamento** também conta: uma negociação em que o arredondamento para U.M. inteiras favoreceu você, como vender um item que vale 1,5 U.M. de cada vez para ganhar 2 U.M. em cada venda (veja [U.M. inteiras e lotes](#um-inteiras-e-lotes)). Ao atingir o **limite** de idas e voltas (padrão 3), cada nova ida e volta aumenta em um o seu nível de penalidade para aquele item, até no máximo 20 níveis.
 
-A sua penalidade cai um nível a cada janela inteira sem idas e voltas. A penalidade é contada por jogador e por item. Os
-operadores do servidor podem mudar todos esses valores; veja a [referência de configuração](configuration.md#fees).
+O nível de penalidade vale só para aquele item e tem dois efeitos:
+
+- o seu preço de compra do item sobe **10% por nível** (+200% no nível 20);
+- o pagamento que você recebe ao vender o item é dividido por 1 + 10% x nível. No nível 2 (+20%), você recebe cerca de 83% do pagamento normal (1 / 1,2), e no nível 20 recebe um terço.
+
+A sua penalidade cai um nível a cada janela inteira sem idas e voltas. A penalidade é contada por jogador e por item, e não afeta mais ninguém. Os operadores do servidor podem mudar todos esses valores; veja a [referência de configuração](configuration.md#fees).
 
 ## Consultar um preço com /freetrade price
 
@@ -255,8 +272,8 @@ operadores do servidor podem mudar todos esses valores; veja a [referência de c
 Qualquer jogador pode usar. A resposta mostra:
 
 - o estoque na associação;
-- quanto a associação paga por unidade a você (depois do imposto de venda);
-- quanto a associação cobra por unidade (com imposto de compra, para uma unidade no estoque atual);
+- quanto a associação paga por unidade a você, depois do imposto de venda (por lote, para itens negociados em lotes);
+- quanto a associação cobra por unidade, com imposto de compra, no estoque atual (por lote, para itens negociados em lotes);
 - quantas unidades formam 1 U.M., quando uma unidade vale menos de 1 U.M.;
 - o valor base e se ele foi declarado pelo servidor ou calculado pelas receitas.
 
@@ -277,3 +294,4 @@ Itens de dinheiro mostram o próprio valor. Itens que não são negociados dizem
 | "O preço mudou. Tente de novo." | O preço mudou entre o seu clique e a compra. Tente de novo. |
 | O Ponto de Venda não vende. | Confira se ele recebe sinal de redstone e se a interface mostra um alvo e itens guardados. |
 | A Compra Automática não compra. | Confira o saldo, o alvo, o estoque e o espaço livre na interface. |
+| O Ponto de Venda mostra "Aguardando um lote completo". | A quantidade guardada é menor que um lote do item, então ele espera até chegar mais. |
