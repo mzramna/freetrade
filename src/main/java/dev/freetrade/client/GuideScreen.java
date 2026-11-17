@@ -55,6 +55,7 @@ public class GuideScreen extends Screen {
     /** Called when a fresh catalog arrives while this screen is open. */
     public void update(FreeTradeNetwork.CatalogPayload p) {
         this.payload = p;
+        this.textPage = -1; // settings may have changed: rebuild the page text
         if (catalog != null) catalog.setEntries(p.entries());
     }
 
@@ -117,7 +118,7 @@ public class GuideScreen extends Screen {
             filterButtons[i].active = filter != f;
         }
         addRenderableWidget(Button.builder(Component.translatable("freetrade.guide.refresh"), b ->
-                PacketDistributor.sendToServer(new FreeTradeNetwork.CatalogRequest(false)))
+                PacketDistributor.sendToServer(new FreeTradeNetwork.CatalogRequest(true)))
                 .bounds(panelX + panelW - 8 - refreshW, panelY + 44, refreshW, 16).build());
 
         catalog.setBounds(panelX + 8, panelY + 64, w, panelH - 64 - 20);
@@ -172,6 +173,13 @@ public class GuideScreen extends Screen {
         List<Component> tooltip = null;
         if (tab == TAB_HOW) {
             renderHow(g);
+        } else if (Boolean.parseBoolean(payload.header().get("catalog_hidden"))) {
+            // the server admin does not let regular players see the catalog in the book
+            int y = panelY + panelH / 2 - 10;
+            for (var line : font.split(Component.translatable("freetrade.guide.catalog_hidden"), panelW - 24)) {
+                g.drawCenteredString(font, line, panelX + panelW / 2, y, MUTED);
+                y += 10;
+            }
         } else {
             g.drawString(font, Component.translatable("freetrade.guide.count", catalog.visibleCount()),
                     panelX + 8, panelY + panelH - 14, MUTED, false);
@@ -215,7 +223,7 @@ public class GuideScreen extends Screen {
     private List<FormattedCharSequence> bodyLines(int textW) {
         if (page == textPage && textWidth == textW) return textLines;
         List<FormattedCharSequence> out = new ArrayList<>();
-        String body = Component.translatable("freetrade.guide.page." + (page + 1) + ".body").getString();
+        String body = Component.translatable("freetrade.guide.page." + (page + 1) + ".body", pageArgs(page)).getString();
         for (String paragraph : body.split("\n")) {
             if (paragraph.isBlank()) continue;
             out.addAll(font.split(Component.literal(paragraph), textW));
@@ -227,15 +235,42 @@ public class GuideScreen extends Screen {
     }
 
     private List<Component> headerLines() {
+        return List.of(Component.translatable("freetrade.guide.header", payload.header().get("database")));
+    }
+
+    private static Component yesNo(String v) {
+        return Component.translatable(Boolean.parseBoolean(v) ? "freetrade.guide.yes" : "freetrade.guide.no");
+    }
+
+    /** Arguments of each page, always taken from the running server's settings (never the defaults). */
+    private Object[] pageArgs(int p) {
         var h = payload.header();
-        Component treasury = h.treasuryInfinite()
-                ? Component.translatable("freetrade.guide.treasury_infinite")
-                : Component.translatable("freetrade.guide.um", Money.format(h.treasury()));
-        List<Component> out = new ArrayList<>();
-        out.add(Component.translatable("freetrade.guide.header", h.formula(),
-                String.format(Locale.ROOT, "%.1f%%", h.taxSell()),
-                String.format(Locale.ROOT, "%.1f%%", h.taxBuy()), treasury));
-        return out;
+        return switch (p) {
+            case 0 -> {
+                List<String> parts = new ArrayList<>();
+                for (var d : dev.freetrade.currency.Currency.denominations()) {
+                    parts.add(Component.translatable("freetrade.guide.money_item",
+                            new net.minecraft.world.item.ItemStack(d.item()).getHoverName(), Money.format(d.milli())).getString());
+                }
+                yield new Object[]{String.join(", ", parts),
+                        Component.translatable(dev.freetrade.net.ClientHooks.bankAvailable ? "freetrade.guide.on" : "freetrade.guide.off")};
+            }
+            case 1 -> new Object[]{h.get("formula"), h.get("reference"),
+                    "-1".equals(h.get("ceiling")) ? Component.translatable("freetrade.guide.no_ceiling")
+                            : Component.translatable("freetrade.guide.um", h.get("ceiling")),
+                    h.get("min_unit")};
+            case 2 -> new Object[]{h.get("labor"), yesNo(h.get("dynamic"))};
+            case 3 -> new Object[]{h.get("villager_stacks"), yesNo(h.get("damaged"))};
+            case 4, 5 -> new Object[]{h.get("machine_batch"), h.get("machine_interval")};
+            case 6 -> new Object[]{h.get("tax_sell"), h.get("tax_buy"),
+                    Boolean.parseBoolean(h.get("backoff_enabled"))
+                            ? Component.translatable("freetrade.guide.backoff_on", h.get("backoff_threshold"),
+                            h.get("backoff_window"), h.get("backoff_percent"), h.get("backoff_max"))
+                            : Component.translatable("freetrade.guide.backoff_off"),
+                    h.treasuryInfinite() ? Component.translatable("freetrade.guide.treasury_infinite")
+                            : Component.translatable("freetrade.guide.treasury_finite", Money.format(h.treasury()))};
+            default -> new Object[0];
+        };
     }
 
     @Override

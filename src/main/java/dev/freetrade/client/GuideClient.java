@@ -17,10 +17,9 @@ public final class GuideClient {
 
     private static void onCatalog(FreeTradeNetwork.CatalogPayload p) {
         Minecraft mc = Minecraft.getInstance();
-        if (p.openGuide()) {
-            mc.setScreen(new GuideScreen(p));
-        } else if (mc.screen instanceof GuideScreen gs) {
-            gs.update(p);
-        }
+        // only payloads meant for the book reach it (the book's catalog may be restricted by the server)
+        if (!p.openGuide()) return;
+        if (mc.screen instanceof GuideScreen gs) gs.update(p);
+        else mc.setScreen(new GuideScreen(p));
     }
 }

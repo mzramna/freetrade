@@ -62,9 +62,10 @@ public class FreeTradeGameTests {
         double log = m.baseValue("minecraft:oak_log");
         double planks = m.baseValue("minecraft:oak_planks");
         h.assertTrue(log > 0, "oak_log base value should be > 0, was " + log);
-        double expected = log / 4.0;
+        // dynamic propagation: planks follow the CURRENT log price (stock may have moved in earlier runs)
+        double expected = m.unitPrice("minecraft:oak_log") / 4.0;
         h.assertTrue(Math.abs(planks - expected) <= expected * 0.10,
-                "oak_planks base value should be about oak_log/4 = " + expected + ", was " + planks);
+                "oak_planks base value should be about current oak_log price / 4 = " + expected + ", was " + planks);
         h.succeed();
     }
 
@@ -219,7 +220,14 @@ public class FreeTradeGameTests {
                 "ft taxaccount query < 5.5",
                 "ft treasury query = 0",
                 "ft trigger add goal tax >= 500 once run say Tax goal reached",
-                "ft trigger add reward tax > 10 repeat 10 60 give @a minecraft:diamond 1"}) {
+                "ft trigger add reward tax > 10 repeat 10 60 give @a minecraft:diamond 1",
+                "ft stock minecraft:oak_log add 64",
+                "ft stock minecraft:oak_log remove 10",
+                "ft stock minecraft:oak_log set 500",
+                "ft forceprice minecraft:stick set 0.5",
+                "ft forceprice minecraft:stick add 0.25",
+                "ft forceprice minecraft:stick clear",
+                "ft forceprice list"}) {
             var parse = dispatcher.parse(cmd, source);
             h.assertTrue(parse.getReader().getRemainingLength() == 0 && parse.getExceptions().isEmpty()
                     && parse.getContext().getLastChild().getCommand() != null, "command should parse: " + cmd);

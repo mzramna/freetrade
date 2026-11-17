@@ -49,6 +49,8 @@ public final class FreeTradeConfig {
     private static final ModConfigSpec.IntValue MACHINE_INTERVAL;
     private static final ModConfigSpec.IntValue MACHINE_BATCH;
     private static final ModConfigSpec.IntValue VILLAGER_MAX_STACKS;
+    // guide
+    private static final ModConfigSpec.BooleanValue GUIDE_SHOW_CATALOG;
     // database
     private static final ModConfigSpec.EnumValue<DbType> DB_TYPE;
     private static final ModConfigSpec.ConfigValue<String> SQLITE_FILE;
@@ -84,6 +86,7 @@ public final class FreeTradeConfig {
     public static DbType dbType = DbType.SQLITE;
     public static String sqliteFile = "freetrade.db", pgUrl = "", pgUser = "", pgPassword = "", serverId = "default";
     public static int cacheRefreshSeconds = 10, historyDays = 90, triggerIntervalTicks = 100;
+    public static boolean guideShowCatalog = true;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -167,6 +170,14 @@ public final class FreeTradeConfig {
                 .defineInRange("batch_size", 64, 1, 100000);
         VILLAGER_MAX_STACKS = b.comment("Stacks of one item a player can put in the trade representative's sell slot.")
                 .defineInRange("villager_max_stacks", 27, 1, 27);
+        b.pop();
+
+        b.push("guide");
+        GUIDE_SHOW_CATALOG = b.comment(
+                        "Whether regular players can see, in the Trade Guide book, the items the association trades",
+                        "and their prices and stock. When false the book's catalog tab is empty for them (OPs still see",
+                        "it). Trading with the representative is not affected.")
+                .define("show_catalog", true);
         b.pop();
 
         b.push("database");
@@ -256,5 +267,6 @@ public final class FreeTradeConfig {
         cacheRefreshSeconds = CACHE_REFRESH.get();
         historyDays = HISTORY_DAYS.get();
         triggerIntervalTicks = TRIGGER_INTERVAL.get();
+        guideShowCatalog = GUIDE_SHOW_CATALOG.get();
     }
 }
