@@ -28,6 +28,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: modlock-${{ github.sha }}
+          name: freetrade-${{ github.sha }}
           path: build/libs/*.jar
           if-no-files-found: error
