@@ -27,10 +27,14 @@ import net.neoforged.fml.loading.FMLPaths;
  * Items missing here get values derived from recipes.
  */
 public final class ValueTable {
+    /**
+     * taxes: item id or #tag -> {"sell": "5%", "buy": "2"}. "N%" is a percentage of the trade, a plain number is a
+     * fixed amount of U.M. per unit traded. Each one replaces the global tax of that direction for that item.
+     */
     public record Data(Map<String, Double> values, Map<String, Long> referenceStock, Map<String, Long> initialStock,
-                       Set<String> excluded) {
+                       Set<String> excluded, Map<String, String> sellTaxes, Map<String, String> buyTaxes) {
         public static Data empty() {
-            return new Data(Map.of(), Map.of(), Map.of(), Set.of());
+            return new Data(Map.of(), Map.of(), Map.of(), Set.of(), Map.of(), Map.of());
         }
     }
 
@@ -89,7 +93,17 @@ public final class ValueTable {
         if (o.has("excluded")) {
             for (JsonElement e : o.getAsJsonArray("excluded")) excluded.add(e.getAsString().trim());
         }
-        return new Data(values, ref, init, excluded);
+        Map<String, String> sellTax = new LinkedHashMap<>();
+        Map<String, String> buyTax = new LinkedHashMap<>();
+        if (o.has("taxes")) {
+            for (var e : o.getAsJsonObject("taxes").entrySet()) {
+                if (e.getKey().startsWith("_") || !e.getValue().isJsonObject()) continue;
+                JsonObject t = e.getValue().getAsJsonObject();
+                if (t.has("sell")) sellTax.put(e.getKey().trim(), t.get("sell").getAsString());
+                if (t.has("buy")) buyTax.put(e.getKey().trim(), t.get("buy").getAsString());
+            }
+        }
+        return new Data(values, ref, init, excluded, sellTax, buyTax);
     }
 
     /** Persists a single value (used by /freetrade setvalue). */
@@ -102,6 +116,27 @@ public final class ValueTable {
         if (!o.has("values")) o.add("values", new JsonObject());
         if (value <= 0) o.getAsJsonObject("values").remove(key);
         else o.getAsJsonObject("values").addProperty(key, value);
+        Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+        try (Writer w = Files.newBufferedWriter(f, StandardCharsets.UTF_8)) {
+            gson.toJson(o, w);
+        }
+        data = parse(o);
+    }
+
+    /** Sets (value != null) or removes the sell/buy tax of a key. direction: "sell" or "buy". */
+    public static synchronized void putTax(String key, String direction, String value) throws IOException {
+        Path f = file();
+        JsonObject o;
+        try (Reader r = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
+            o = JsonParser.parseReader(r).getAsJsonObject();
+        }
+        if (!o.has("taxes")) o.add("taxes", new JsonObject());
+        JsonObject taxes = o.getAsJsonObject("taxes");
+        JsonObject t = taxes.has(key) && taxes.get(key).isJsonObject() ? taxes.getAsJsonObject(key) : new JsonObject();
+        if (value == null) t.remove(direction);
+        else t.addProperty(direction, value);
+        if (t.size() == 0) taxes.remove(key);
+        else taxes.add(key, t);
         Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
         try (Writer w = Files.newBufferedWriter(f, StandardCharsets.UTF_8)) {
             gson.toJson(o, w);
@@ -187,6 +222,10 @@ public final class ValueTable {
             ex.add(s);
         }
         root.add("excluded", ex);
+        JsonObject taxes = new JsonObject();
+        taxes.addProperty("_comment", "item id or #tag -> {\"sell\": \"5%\", \"buy\": \"2\"}: N% = percent of the trade, "
+                + "a plain number = fixed U.M. per unit. Replaces the global tax for that item and direction.");
+        root.add("taxes", taxes);
         return new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create().toJson(root);
     }
 }

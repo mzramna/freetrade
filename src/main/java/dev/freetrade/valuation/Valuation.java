@@ -40,6 +40,23 @@ import net.minecraft.world.item.crafting.SmithingTransformRecipe;
 public final class Valuation {
     private Valuation() {}
 
+    /** Resolves the per-item taxes of values.json (tags expanded, exact ids win) and installs them. */
+    public static void applyTaxes(Market market, ValueTable.Data table) {
+        market.setItemTaxes(rules(resolve(table.sellTaxes())), rules(resolve(table.buyTaxes())));
+    }
+
+    private static Map<String, dev.freetrade.market.TaxRule> rules(Map<String, String> raw) {
+        Map<String, dev.freetrade.market.TaxRule> out = new HashMap<>();
+        raw.forEach((k, v) -> {
+            try {
+                out.put(k, dev.freetrade.market.TaxRule.parse(v));
+            } catch (IllegalArgumentException e) {
+                FreeTrade.LOG.warn("values.json taxes: {} -> {}", k, e.getMessage());
+            }
+        });
+        return out;
+    }
+
     /** Inputs read on the server thread. */
     public record Inputs(Map<String, Double> declared, Map<String, Long> reference, Map<String, Long> initial,
                          Set<String> excluded, Set<String> currency, List<String> allItems, List<RecipeEdge> recipes) {}
@@ -76,6 +93,7 @@ public final class Valuation {
     public static Inputs gather(MinecraftServer server) {
         ValueTable.Data table = ValueTable.load();
         Currency.rebuild();
+        lastTable = table;
         Map<String, Double> declared = new HashMap<>(resolve(table.values()));
         Set<String> currency = Currency.ids();
         for (var d : Currency.denominations()) {
@@ -175,6 +193,7 @@ public final class Valuation {
     public record Outcome(int declared, int derived, int unpriced, Set<String> unpricedItems, long millis) {}
 
     private static volatile Set<String> lastUnpriced = Set.of();
+    private static volatile ValueTable.Data lastTable = ValueTable.Data.empty();
 
     public static Set<String> lastUnpriced() {
         return lastUnpriced;
@@ -230,6 +249,7 @@ public final class Valuation {
         Market.Snapshot snap = new Market.Snapshot(declared, derived, derivations, in.reference(), in.initial(),
                 in.currency());
         market.install(snap, initialStocks(snap, in, blocked));
+        applyTaxes(market, lastTable);
         lastUnpriced = Set.copyOf(unpriced);
         long ms = System.currentTimeMillis() - t0;
         FreeTrade.LOG.info("Free Trade valuation {}: {} declared, {} derived, {} unpriced ({} recipes, {} ms)",

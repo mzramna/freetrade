@@ -183,6 +183,37 @@ class MarketSqliteTest {
     }
 
     @Test
+    void perItemTaxesPercentAndFixed() throws Exception {
+        Market m = new Market(db, new PricingEngine.Params(PriceExpression.parse("b"), -1, 0.001), settings(-1, 10));
+        m.install(new Market.Snapshot(Map.of("gem", 10.0, "dust", 10.0, "rock", 10.0), Map.of(), Map.of(), Map.of(),
+                Map.of(), Set.of()), Map.of("gem", 1000L, "dust", 1000L, "rock", 1000L));
+        // gem: 50% on sales; dust: 2 U.M. per unit on purchases; rock: global (10% on sales, 0 on purchases)
+        m.setItemTaxes(Map.of("gem", TaxRule.parse("50%")), Map.of("dust", TaxRule.parse("2")));
+        assertEquals(Money.ofUnits(5), m.quoteSell("gem", 1, 1.0), "10 - 50%");
+        assertEquals(Money.ofUnits(9), m.quoteSell("rock", 1, 1.0), "10 - global 10%");
+        assertEquals(Money.ofUnits(36), m.quoteBuy("dust", 3, 1.0), "3 x 10 + 3 x 2");
+        assertEquals(Money.ofUnits(10), m.quoteBuy("rock", 1, 1.0));
+        var r = m.buy(CTX, "dust", 3, Long.MAX_VALUE, true).get();
+        assertEquals(Money.ofUnits(36), r.costMilli());
+        assertEquals(Money.ofUnits(6), r.taxMilli());
+        assertEquals(Money.ofUnits(6), m.account(MarketStore.TAX));
+        // a fixed sell tax can never make a sale cost money
+        m.setItemTaxes(Map.of("rock", TaxRule.parse("50")), Map.of());
+        assertEquals(0, m.quoteSell("rock", 1, 1.0));
+    }
+
+    @Test
+    void taxRuleParsing() {
+        assertTrue(TaxRule.parse("5%").percent());
+        assertEquals(5.0, TaxRule.parse(" 5 % ").value(), 1e-9);
+        assertFalse(TaxRule.parse("2").percent());
+        assertEquals("2.5", TaxRule.parse("2,5").toString());
+        assertEquals("5%", TaxRule.parse("5%").toString());
+        assertThrows(IllegalArgumentException.class, () -> TaxRule.parse("abc"));
+        assertThrows(IllegalArgumentException.class, () -> TaxRule.parse("-1"));
+    }
+
+    @Test
     void stockSurvivesReopen() throws Exception {
         Market m = market(-1, 0);
         m.sell(CTX, "oak_log", 5, 1.0).get();

@@ -227,7 +227,11 @@ public class FreeTradeGameTests {
                 "ft forceprice minecraft:stick set 0.5",
                 "ft forceprice minecraft:stick add 0.25",
                 "ft forceprice minecraft:stick clear",
-                "ft forceprice list"}) {
+                "ft forceprice list",
+                "ft tax minecraft:diamond sell 5%",
+                "ft tax minecraft:diamond buy 2",
+                "ft tax minecraft:diamond clear sell",
+                "ft tax list"}) {
             var parse = dispatcher.parse(cmd, source);
             h.assertTrue(parse.getReader().getRemainingLength() == 0 && parse.getExceptions().isEmpty()
                     && parse.getContext().getLastChild().getCommand() != null, "command should parse: " + cmd);
