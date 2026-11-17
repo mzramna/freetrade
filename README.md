@@ -46,8 +46,9 @@ villagers, Sell Points and Auto Buyers.
 - **Price tooltips.** Hover over an item in your inventory to see what the association pays and charges.
 - **Money.** Emeralds and emerald blocks by default, any items the server chooses, and Lightman's Currency coins and bank
   accounts when that mod is installed.
-- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, an anti-storage backoff against
-  round trips and rounding abuse, and an optional finite treasury.
+- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, as a percentage or a fixed
+  amount per unit, set globally or per item. An anti-storage backoff against round trips and rounding abuse, and an
+  optional finite treasury.
 - **Triggers.** Command-block friendly queries such as `/freetrade treasury query >= 1000`, and commands that run when an
   account reaches a condition.
 - **Admin tools.** `/freetrade stock`, `forceprice`, `recalc`, and base values declared in `values.json`.

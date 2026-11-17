@@ -18,6 +18,7 @@ valores e a linguagem da fórmula de preço. Para um passo a passo de configura�
 - [values.json](#valuesjson)
   - [Estrutura](#estrutura)
   - [Tags e prioridade](#tags-e-prioridade)
+  - [Impostos por item](#impostos-por-item)
   - [Valores derivados das receitas](#valores-derivados-das-receitas)
   - [Mão de obra](#mão-de-obra)
   - [Recalcular versus recarregar](#recalcular-versus-recarregar)
@@ -136,6 +137,9 @@ check_interval_ticks = 100
 | `backoff_max_level` | inteiro | `20` | 1 a 1000 | Nível máximo de penalidade. Com os padrões, o preço de compra sobe no máximo 200%, e o pagamento por venda cai para no máximo um terço. | `10` |
 | `treasury_initial` | inteiro (U.M.) | `-1` | -1 a 9223372036854775 | `-1` significa tesouraria infinita: as negociações não a tocam, então ela sempre paga. Qualquer outro valor torna a tesouraria finita: vender para a associação é pago com ela, comprar dela a reabastece, e, quando ela está vazia, a associação para de comprar dos jogadores. O valor é o saldo inicial, gravado apenas quando o banco de dados é criado pela primeira vez. Mudanças posteriores não redefinem o saldo; use `/freetrade treasury deposit` ou `remove`. Veja [Configurações econômicas](server-modpack-guide.md#configurações-econômicas-imposto-tesouraria-backoff). | `100000` |
 
+Impostos por item em [`values.json`](#impostos-por-item) substituem estas duas porcentagens para os itens que eles
+citam. Itens sem regra mantêm a porcentagem global.
+
 ### [machines]
 
 | Chave | Tipo | Padrão | Faixa | Explicação | Exemplo |
@@ -172,7 +176,7 @@ check_interval_ticks = 100
 ## values.json
 
 `config/freetrade/values.json` define o valor base, o estoque de referência e o estoque inicial dos itens, e quais itens
-são excluídos. Se o arquivo não existir, o Livre Comércio o cria com uma lista padrão de valores na primeira carga.
+são excluídos, e define impostos por item. Se o arquivo não existir, o Livre Comércio o cria com uma lista padrão de valores na primeira carga.
 
 ### Estrutura
 
@@ -192,7 +196,11 @@ são excluídos. Se o arquivo não existir, o Livre Comércio o cria com uma lis
   "excluded": [
     "minecraft:bedrock",
     "#c:hidden_from_recipe_viewers"
-  ]
+  ],
+  "taxes": {
+    "minecraft:diamond": { "sell": "5%", "buy": "2" },
+    "#c:ores": { "sell": "10%" }
+  }
 }
 ```
 
@@ -202,6 +210,7 @@ são excluídos. Se o arquivo não existir, o Livre Comércio o cria com uma lis
 | `reference_stock` | inteiro, de pelo menos 1 | `r` de cada item: o estoque em que o item custa o seu valor base. Substitui o `reference_stock` da configuração do servidor. |
 | `initial_stock` | inteiro, de pelo menos 0 | Estoque com que o item começa. Substitui o modo de `initial_stock` da configuração do servidor. |
 | `excluded` | lista de textos | Itens que nunca recebem valor derivado de receita e nunca recebem estoque inicial. `excluded` sempre vence: um item listado aqui nunca é negociado, mesmo que também tenha um valor em `values`. |
+| `taxes` | objeto | Impostos de venda e de compra por item. Cada chave é um id de item ou uma `#tag`, com um valor `sell` e/ou `buy`. Veja [Impostos por item](#impostos-por-item). |
 
 Chaves que começam com `_` (por exemplo `_comment`) são ignoradas. Cada chave é um id de item, como `minecraft:diamond`,
 ou uma tag escrita com `#` na frente, como `#minecraft:logs`.
@@ -209,7 +218,7 @@ ou uma tag escrita com `#` na frente, como `#minecraft:logs`.
 **Conteúdo padrão.** O arquivo padrão declara valores base para itens comuns do Minecraft, por exemplo `#minecraft:logs` a
 4 U.M., `minecraft:diamond` a 64 U.M. e `minecraft:nether_star` a 1024 U.M. Define `reference_stock` para diamantes (200),
 estrelas do Nether (10) e sucata de netherita (50), e exclui itens como bedrock, barreiras, blocos de comando, blocos de
-estrutura, geradores de monstros e a tag `#c:hidden_from_recipe_viewers`.
+estrutura, geradores de monstros e a tag `#c:hidden_from_recipe_viewers`. Sua seção `taxes` começa vazia.
 
 ### Tags e prioridade
 
@@ -218,6 +227,38 @@ estrutura, geradores de monstros e a tag `#c:hidden_from_recipe_viewers`.
 - Um id de item exato sempre vence uma tag para o mesmo item.
 - Se duas tags listam o mesmo item, vale a tag que aparece primeiro no arquivo.
 - Um arquivo JSON inválido não é aplicado. O erro é registrado e os valores anteriores continuam em uso.
+
+### Impostos por item
+
+A seção `taxes` dá a um item o seu próprio imposto de venda, de compra, ou os dois. Uma regra por item **substitui** o
+`tax_on_sell_percent` ou o `tax_on_buy_percent` global apenas para esse item e nessa direção. Os outros itens, e a outra
+direção, mantêm o valor global.
+
+```jsonc
+"taxes": {
+  "minecraft:diamond": { "sell": "5%", "buy": "2" },
+  "#c:ores": { "sell": "10%" }
+}
+```
+
+Cada valor tem uma de duas formas:
+
+- **Porcentagem**, terminando com `%`, como `5%`. É uma porcentagem do valor da negociação. O máximo é `1000%`.
+- **Valor fixo**, um número simples como `2`. É em U.M. por unidade negociada. Decimais são permitidos, e a vírgula
+  também funciona (`2,5`).
+
+`sell` ou `buy` podem ser omitidos. O imposto vai para a conta de imposto dos operadores, como o imposto global.
+
+- **Venda:** o imposto é tirado do valor pago. Ele nunca passa do valor da venda, então uma venda nunca custa dinheiro
+  ao jogador.
+- **Compra:** o imposto é pago além do preço.
+- O total real, com imposto, é arredondado para U.M. inteiras, metade para cima, como em qualquer negociação.
+- Um valor de `0` ou `0%` desliga o imposto desse item e dessa direção, mesmo quando o imposto global está definido.
+- Uma tag (`#tag`) vale para todos os itens dela, e um id de item exato sempre vence uma tag, como no resto do arquivo.
+- Um valor que não pode ser lido é registrado e ignorado. Esse item e essa direção usam então o imposto global.
+
+Tags só podem ser escritas no `values.json`. O comando [`/freetrade tax`](commands.md#impostos-por-item) grava ids de
+item exatos. Rode `/freetrade reload` depois de editar o arquivo à mão.
 
 ### Valores derivados das receitas
 
@@ -244,7 +285,7 @@ de obra custa cerca de 33% a mais que seus ingredientes puros (`1,1 * 1,1 * 1,1`
 
 | Comando | O que faz | Use depois de |
 |---------|-----------|---------------|
-| `/freetrade reload` | Relê a configuração do servidor e o `values.json`. Os valores declarados, o estoque de referência, o estoque inicial e os itens excluídos são atualizados. Os valores derivados já guardados no banco são mantidos. | Mudar a configuração, ou editar valores declarados, estoque de referência ou itens excluídos. |
+| `/freetrade reload` | Relê a configuração do servidor e o `values.json`. Os valores declarados, o estoque de referência, o estoque inicial, os itens excluídos e os impostos por item são atualizados. Os valores derivados já guardados no banco são mantidos. | Mudar a configuração, ou editar valores declarados, estoque de referência, itens excluídos ou impostos. |
 | `/freetrade recalc` | Calcula de novo todos os valores derivados, a partir das receitas e dos valores declarados atuais, e os guarda. O estoque é mantido. | Adicionar, remover ou alterar mods ou receitas; mudar `labor_percent`; usar `setvalue`. |
 
 `/freetrade setvalue <item> <valor>` grava o valor no `values.json` e recarrega. Ele não muda os valores derivados de

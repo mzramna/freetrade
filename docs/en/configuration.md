@@ -18,6 +18,7 @@ language. For a step-by-step guide to setting up a server or a modpack, see the
 - [values.json](#valuesjson)
   - [Structure](#structure)
   - [Tags and priority](#tags-and-priority)
+  - [Per-item taxes](#per-item-taxes)
   - [Derived values from recipes](#derived-values-from-recipes)
   - [Labor](#labor)
   - [Recalc versus reload](#recalc-versus-reload)
@@ -135,6 +136,9 @@ check_interval_ticks = 100
 | `backoff_max_level` | integer | `20` | 1 to 1000 | Maximum penalty level. With the defaults, the buy price rises by at most 200%, and the payout for selling falls to one third at most. | `10` |
 | `treasury_initial` | integer (U.M.) | `-1` | -1 to 9223372036854775 | `-1` means an infinite treasury: trades do not touch it, so it always pays. Any other value makes the treasury finite: selling to the association is paid from it, buying from it refills it, and when it is empty the association stops buying from players. Its value is the starting balance, which is written only when the database is first created. Later changes do not reset the balance; use `/freetrade treasury deposit` or `remove`. See [Economy settings](server-modpack-guide.md#economy-settings-tax-treasury-backoff). | `100000` |
 
+Per-item taxes in [`values.json`](#per-item-taxes) replace these two percentages for the items they name. Items without
+a rule keep the global percentage.
+
 ### [machines]
 
 | Key | Type | Default | Range | Explanation | Example |
@@ -171,7 +175,7 @@ check_interval_ticks = 100
 ## values.json
 
 `config/freetrade/values.json` sets the base value, reference stock and starting stock of items, and which items are
-excluded. If the file does not exist, Free Trade creates it with a default list of values when it first loads.
+excluded, and sets per-item taxes. If the file does not exist, Free Trade creates it with a default list of values when it first loads.
 
 ### Structure
 
@@ -191,7 +195,11 @@ excluded. If the file does not exist, Free Trade creates it with a default list 
   "excluded": [
     "minecraft:bedrock",
     "#c:hidden_from_recipe_viewers"
-  ]
+  ],
+  "taxes": {
+    "minecraft:diamond": { "sell": "5%", "buy": "2" },
+    "#c:ores": { "sell": "10%" }
+  }
 }
 ```
 
@@ -201,6 +209,7 @@ excluded. If the file does not exist, Free Trade creates it with a default list 
 | `reference_stock` | integer, at least 1 | Per-item `r`: the stock at which the item costs its base value. Overrides `reference_stock` in the server config. |
 | `initial_stock` | integer, at least 0 | Stock the item starts with. Overrides `initial_stock` mode in the server config. |
 | `excluded` | array of strings | Items that never get a recipe-derived value and never get starting stock. `excluded` always wins: an item listed here is never traded, even if it also has a value in `values`. |
+| `taxes` | object | Per-item sell and buy taxes. Each key is an item id or a `#tag`, with a `sell` and/or `buy` value. See [Per-item taxes](#per-item-taxes). |
 
 Keys that start with `_` (for example `_comment`) are ignored. Each key is an item id such as `minecraft:diamond`, or a
 tag written with a leading `#`, such as `#minecraft:logs`.
@@ -208,7 +217,7 @@ tag written with a leading `#`, such as `#minecraft:logs`.
 **Default content.** The default file declares base values for common vanilla items, for example `#minecraft:logs`
 at 4 U.M., `minecraft:diamond` at 64 U.M. and `minecraft:nether_star` at 1024 U.M. It sets `reference_stock` for
 diamonds (200), nether stars (10) and netherite scrap (50), and excludes items such as bedrock, barriers, command
-blocks, structure blocks, spawners, and the `#c:hidden_from_recipe_viewers` tag.
+blocks, structure blocks, spawners, and the `#c:hidden_from_recipe_viewers` tag. Its `taxes` section starts empty.
 
 ### Tags and priority
 
@@ -217,6 +226,38 @@ blocks, structure blocks, spawners, and the `#c:hidden_from_recipe_viewers` tag.
 - An exact item id always beats a tag for the same item.
 - If two tags list the same item, the tag that appears first in the file wins.
 - An invalid JSON file is not applied. The error is logged and the previous values stay in use.
+
+### Per-item taxes
+
+The `taxes` section gives an item its own sell tax, buy tax, or both. A per-item rule **replaces** the global
+`tax_on_sell_percent` or `tax_on_buy_percent` for that item and that direction only. Other items, and the other
+direction, keep the global value.
+
+```jsonc
+"taxes": {
+  "minecraft:diamond": { "sell": "5%", "buy": "2" },
+  "#c:ores": { "sell": "10%" }
+}
+```
+
+Each value is one of two forms:
+
+- **Percentage**, ending with `%`, such as `5%`. It is a percentage of the trade value. The maximum is `1000%`.
+- **Fixed amount**, a plain number such as `2`. It is U.M. per unit traded. Decimals are allowed, and a comma works
+  too (`2,5`).
+
+Either `sell` or `buy` may be left out. The tax goes to the operators' tax account, as the global tax does.
+
+- **Sell:** the tax is taken from the payout. It never exceeds the value of the sale, so a sale never costs the
+  player money.
+- **Buy:** the tax is paid on top of the price.
+- The real total, including tax, is rounded half up to whole U.M., as for every trade.
+- A value of `0` or `0%` turns the tax off for that item and direction, even when the global tax is set.
+- A tag (`#tag`) applies to every item in it, and an exact item id always beats a tag, as in the rest of the file.
+- A value that cannot be read is logged and ignored. That item and direction then use the global tax.
+
+Tags can be written only in `values.json`. The [`/freetrade tax`](commands.md#per-item-taxes) command writes exact item
+ids. Run `/freetrade reload` after you edit the file by hand.
 
 ### Derived values from recipes
 
@@ -243,7 +284,7 @@ about 33% more than its raw ingredients (`1.1 * 1.1 * 1.1`).
 
 | Command | What it does | Use it after |
 |---------|--------------|--------------|
-| `/freetrade reload` | Re-reads the server config and `values.json`. Declared values, reference stock, starting stock and excluded items are updated. Derived values already in the database are kept. | Changing the config, or editing declared values, reference stock or excluded items. |
+| `/freetrade reload` | Re-reads the server config and `values.json`. Declared values, reference stock, starting stock, excluded items and per-item taxes are updated. Derived values already in the database are kept. | Changing the config, or editing declared values, reference stock, excluded items or taxes. |
 | `/freetrade recalc` | Solves every derived value again from the current recipes and declared values, then stores them. Stock is kept. | Adding, removing or changing mods or recipes; changing `labor_percent`; using `setvalue`. |
 
 `/freetrade setvalue <item> <value>` writes the value to `values.json` and reloads. It does not change derived values

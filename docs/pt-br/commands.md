@@ -9,6 +9,7 @@ estes comandos mudam, veja a [referência de configuração](configuration.md).
 - [Comando de jogador](#comando-de-jogador)
 - [Comandos de administrador](#comandos-de-administrador)
 - [Estoque e preços forçados](#estoque-e-preços-forçados)
+- [Impostos por item](#impostos-por-item)
 - [Contas: tesouraria e imposto](#contas-tesouraria-e-imposto)
 - [Gatilhos](#gatilhos)
 - [Exemplos](#exemplos)
@@ -18,7 +19,7 @@ estes comandos mudam, veja a [referência de configuração](configuration.md).
 | Quem | Comandos |
 |------|----------|
 | Qualquer jogador | `price` |
-| Operadores (nível de permissão 2 ou mais), e blocos de comando no nível padrão | Todos os demais: `recalc`, `reload`, `stock`, `setstock`, `forceprice`, `setvalue`, `unpriced`, `history`, `account`, `treasury`, `taxaccount`, `trigger` |
+| Operadores (nível de permissão 2 ou mais), e blocos de comando no nível padrão | Todos os demais: `recalc`, `reload`, `stock`, `setstock`, `forceprice`, `setvalue`, `unpriced`, `history`, `account`, `treasury`, `taxaccount`, `tax`, `trigger` |
 
 Comandos que mudam dinheiro mostram o novo saldo. Comandos que devolvem um número usam esse número como resultado do
 comando, que blocos de comando podem ler (veja [Contas](#contas-tesouraria-e-imposto)).
@@ -50,6 +51,11 @@ comando, que blocos de comando podem ler (veja [Contas](#contas-tesouraria-e-imp
 | `/freetrade setvalue <item> <valor>` | Grava o valor base do item no `values.json` e recarrega. Um valor `0` remove o valor declarado. Os valores derivados de outros itens não mudam até o `recalc`. |
 | `/freetrade unpriced [página]` | Lista os itens sem preço, 15 por página. A página 1 é o padrão. |
 | `/freetrade history [item]` | Mostra as últimas 10 transações, opcionalmente só de um item. Cada linha mostra o id do servidor, a hora, o jogador, a quantidade, o item, o valor, o imposto e o estoque depois da negociação. |
+| `/freetrade tax list` | Lista os impostos por item do `values.json`, com o valor de venda e de compra de cada item ou tag. Veja [Impostos por item](#impostos-por-item). |
+| `/freetrade tax <item>` | Mostra o imposto de venda e de compra de um item. `(global)` significa que o item usa a porcentagem global. |
+| `/freetrade tax <item> sell <valor>` | Define o imposto de venda de um item, como `5%` ou como um valor fixo, como `2`. |
+| `/freetrade tax <item> buy <valor>` | Define o imposto de compra de um item, como `5%` ou como um valor fixo, como `2`. |
+| `/freetrade tax <item> clear [sell\|buy]` | Remove o imposto por item de um item, para uma direção ou para as duas. O imposto global volta a valer. |
 
 ## Estoque e preços forçados
 
@@ -79,6 +85,34 @@ preço forçado.
 
 Use `setvalue` quando o item deve continuar reagindo à oferta. Use `forceprice` para um preço fixo, como o de uma loja
 ou de um evento.
+
+## Impostos por item
+
+`/freetrade tax` dá a um item o seu próprio imposto de venda, de compra, ou os dois. Um imposto por item substitui a
+porcentagem global para esse item e essa direção. Para entender como os valores funcionam, veja
+[Impostos por item](configuration.md#impostos-por-item).
+
+### Sintaxe
+
+```
+/freetrade tax list
+/freetrade tax <item>
+/freetrade tax <item> sell <valor>
+/freetrade tax <item> buy <valor>
+/freetrade tax <item> clear
+/freetrade tax <item> clear sell
+/freetrade tax <item> clear buy
+```
+
+| Parte | Significado |
+|-------|-------------|
+| `<item>` | Um id de item, como `minecraft:diamond`. Tags não podem ser usadas com este comando. |
+| `<valor>` | `5%` para uma porcentagem da negociação, ou `2` para um valor fixo de U.M. por unidade negociada. Decimais e vírgulas são permitidos. |
+| `clear` | Remove o imposto por item. Sem `sell` ou `buy`, as duas direções são limpas. |
+
+O comando grava o id exato do item no `values.json` e aplica a mudança na hora, então não é preciso `reload`. Regras de
+tag (`#tag`) não são definidas pelo comando: edite o `values.json` e rode `/freetrade reload`. Cada comando termina
+mostrando os impostos do item. Como os outros comandos de administrador, ele precisa do nível de permissão 2.
 
 ## Contas: tesouraria e imposto
 
@@ -194,6 +228,10 @@ ativação.
 /ft forceprice list                       (todos os preços forçados)
 /ft unpriced 2                            (segunda página dos itens sem preço)
 /ft history minecraft:diamond             (negociações recentes de diamante)
+/ft tax list                              (todos os impostos por item)
+/ft tax minecraft:diamond sell 5%         (5% de cada venda de diamante)
+/ft tax minecraft:diamond buy 2           (2 U.M. por diamante comprado)
+/ft tax minecraft:diamond clear buy       (imposto de compra volta ao valor global)
 /ft treasury deposit 500                  (acrescenta 500 U.M. à tesouraria)
 /ft taxaccount balance                    (mostra a conta de imposto)
 /ft taxaccount withdraw 50 minecraft:emerald_block
