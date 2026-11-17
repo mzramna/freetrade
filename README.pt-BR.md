@@ -15,8 +15,7 @@ Baixe o jar em [Releases](https://github.com/mzramna/freetrade/releases/latest):
 | Jar                          | Minecraft | NeoForge | Observações |
 |------------------------------|-----------|----------|-------------|
 | `freetrade-1.21.1-<ver>.jar` | 1.21.1    | 21.1.x   | Java 21 |
-
-Uma versão para o Minecraft 26.1 (NeoForge 26.1.x, Java 25) está planejada e aparecerá aqui quando for lançada.
+| `freetrade-26.1.2-<ver>.jar` | 26.1.2    | 26.1.x   | Java 25. O EMI ainda não existe para 26.1, então só o JEI permite arrastar itens. |
 
 Instale **no servidor e nos clientes**. Todo servidor que compartilha uma economia deve usar o mesmo modpack.
 
