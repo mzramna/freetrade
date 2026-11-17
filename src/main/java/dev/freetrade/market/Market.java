@@ -233,6 +233,14 @@ public final class Market {
         return cost + taxOf(cost, settings.taxBuyPercent());
     }
 
+    /** Current backoff multiplier of a player for an item (read from the database). */
+    public CompletableFuture<Double> backoffMultiplier(String player, String item) {
+        final Settings st = settings;
+        if (!st.backoff().enabled() || player == null) return CompletableFuture.completedFuture(1.0);
+        return db.submit(c -> BackoffTracker.peek(store.lockBackoff(c, player, item), st.backoff(),
+                System.currentTimeMillis())).exceptionally(t -> 1.0);
+    }
+
     private static long taxOf(long amount, double percent) {
         if (percent <= 0 || amount <= 0) return 0;
         return (long) Math.floor(amount * percent / 100.0);

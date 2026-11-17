@@ -53,6 +53,16 @@ public final class Currency {
         byItem = Map.copyOf(map);
     }
 
+    /** Client: replaces the list with what the server uses. */
+    public static void setFromServer(List<Denomination> list) {
+        List<Denomination> sorted = new ArrayList<>(list);
+        sorted.sort(Comparator.comparingLong(Denomination::milli).reversed());
+        Map<Item, Long> map = new LinkedHashMap<>();
+        for (Denomination d : sorted) map.put(d.item(), d.milli());
+        denominations = List.copyOf(sorted);
+        byItem = Map.copyOf(map);
+    }
+
     public static List<Denomination> denominations() {
         return denominations;
     }

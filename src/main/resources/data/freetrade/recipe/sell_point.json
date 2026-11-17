@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [ "PEP", "PCP", "PHP" ],
+  "key": {
+    "P": { "tag": "minecraft:planks" },
+    "E": { "item": "minecraft:emerald" },
+    "C": { "tag": "c:chests/wooden" },
+    "H": { "item": "minecraft:hopper" }
+  },
+  "result": { "id": "freetrade:sell_point", "count": 1 }
+}
