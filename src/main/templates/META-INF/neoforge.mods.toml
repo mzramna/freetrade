@@ -32,3 +32,17 @@ Prices fall when an item is abundant and rise when it is scarce; values of unlis
     versionRange="*"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="jei"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="emi"
+    type="optional"
+    versionRange="*"
+    ordering="NONE"
+    side="CLIENT"

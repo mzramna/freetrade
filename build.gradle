@@ -87,6 +87,8 @@ dependencies {
 
     // Optional integrations (compile only; loaded at runtime only when the mods are installed)
     compileOnly "maven.modrinth:lightmans-currency:${lightmans_version}"
+    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
+    compileOnly "dev.emi:emi-neoforge:${emi_version}"
 
     testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation "org.junit.jupiter:junit-jupiter"
