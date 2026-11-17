@@ -21,8 +21,8 @@ configurações econômicas que os operadores podem usar. Os nomes e padrões da
 
 ## Instalação
 
-O Livre Comércio roda no NeoForge para Minecraft 1.21.1 (NeoForge 21.1.x, Java 21). O branch 26.1 está planejado e ainda
-não foi lançado.
+O Livre Comércio roda no NeoForge para Minecraft 1.21.1 (NeoForge 21.1.x, Java 21) e Minecraft 26.1.2 (NeoForge 26.1.x,
+Java 25). No 26.1 só o JEI é suportado para arrastar itens, porque o EMI ainda não tem versão para 26.1.
 
 | Onde | O que instalar |
 |------|----------------|

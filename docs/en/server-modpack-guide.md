@@ -21,8 +21,8 @@ setting names and defaults are listed in the [configuration reference](configura
 
 ## Installing
 
-Free Trade runs on NeoForge for Minecraft 1.21.1 (NeoForge 21.1.x, Java 21). The 26.1 branch is planned and not
-released yet.
+Free Trade runs on NeoForge for Minecraft 1.21.1 (NeoForge 21.1.x, Java 21) and Minecraft 26.1.2 (NeoForge 26.1.x,
+Java 25). On 26.1 only JEI is supported for drag-and-drop, because EMI has no 26.1 release yet.
 
 | Where | What to install |
 |-------|-----------------|
