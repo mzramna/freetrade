@@ -118,7 +118,7 @@ public class TraderMenu extends AbstractContainerMenu {
         final int offered = total;
         busy = true;
         MinecraftServer server = sp.level().getServer();
-        m.sell(FreeTradeServer.context(sp, "villager"), id, offered, factor, true).thenAccept(res -> server.execute(() -> {
+        m.sell(FreeTradeServer.context(sp, "villager"), id, offered, factor).thenAccept(res -> server.execute(() -> {
             busy = false;
             long back = offered - (res.ok() ? res.units() : 0);
             // give back the unsold units (last stacks first)

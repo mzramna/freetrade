@@ -33,11 +33,10 @@ public final class PriceTooltip {
             if (e != null) {
                 lines.add(Component.translatable("freetrade.tooltip.price", CatalogWidget.price(e.sell()),
                         CatalogWidget.price(e.buy()), e.stock()).withStyle(ChatFormatting.GRAY));
+                if (e.lot() > 1) {
+                    lines.add(Component.translatable("freetrade.tooltip.lot", e.lot()).withStyle(ChatFormatting.GRAY));
+                }
                 if (Minecraft.getInstance().hasShiftDown()) {
-                    if (e.lot() > 1) {
-                        lines.add(Component.translatable("freetrade.tooltip.lot", e.lot())
-                                .withStyle(ChatFormatting.DARK_GRAY));
-                    }
                     lines.add(Component.translatable(e.declared() ? "freetrade.tooltip.declared"
                             : "freetrade.tooltip.derived").withStyle(ChatFormatting.DARK_GRAY));
                 }

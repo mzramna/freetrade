@@ -45,13 +45,12 @@ class PricingEngineTest {
     }
 
     @Test
-    void sticksAreSoldInLots() {
-        // stick worth 0.5 U.M with a flat formula: 2 sticks = 1 U.M, 3 sticks still only 1 U.M -> keep 1 back
-        PricingEngine e = engine("b", -1);
-        assertEquals(2, e.unitsPerOneUm(0.5, 1000, 1000, 64));
-        assertEquals(2, e.unitsForWholePayout(0.5, 1000, 1000, 3, 1.0));
-        assertEquals(0, e.unitsForWholePayout(0.5, 1000, 1000, 1, 1.0));
-        assertEquals(64, e.unitsForWholePayout(0.5, 1000, 1000, 64, 1.0));
+    void roundHalfUp() {
+        assertEquals(2000, Money.roundHalfUp(1500));
+        assertEquals(1000, Money.roundHalfUp(1499));
+        assertEquals(5000, Money.roundHalfUp(4500));
+        assertEquals(4000, Money.roundHalfUp(4499));
+        assertEquals(0, Money.roundHalfUp(499));
     }
 
     @Test

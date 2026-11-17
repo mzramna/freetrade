@@ -60,8 +60,8 @@ class MarketPostgresTest {
         Market b = market(dbB, "server-b");
         List<CompletableFuture<Market.SellResult>> sells = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
-            sells.add(a.sell(new Market.TradeContext("pa", "A", "test"), "oak_log", 10, 1.0, false));
-            sells.add(b.sell(new Market.TradeContext("pb", "B", "test"), "oak_log", 10, 1.0, false));
+            sells.add(a.sell(new Market.TradeContext("pa", "A", "test"), "oak_log", 10, 1.0));
+            sells.add(b.sell(new Market.TradeContext("pb", "B", "test"), "oak_log", 10, 1.0));
         }
         long units = 0, tax = 0;
         for (var f : sells) {

@@ -138,9 +138,11 @@ public class CatalogWidget {
             g.text(font, n, x + 22, ry + 1, 0xFFFFFFFF, false);
             int stockColor = e.stock() > 0 ? 0xFF80FF80 : 0xFFFF8080;
             String line = Component.translatable("freetrade.catalog.row", e.stock(), price(e.sell()), price(e.buy())).getString();
+            if (e.lot() > 1) line = e.lot() + "× " + line;
             if (font.width(line) > width - 26) {
                 // narrow lists: drop the stock (its color already tells in/out of stock; the tooltip has it)
                 line = Component.translatable("freetrade.catalog.row_short", price(e.sell()), price(e.buy())).getString();
+                if (e.lot() > 1) line = e.lot() + "× " + line;
             }
             g.text(font, font.plainSubstrByWidth(line, width - 26), x + 22, ry + 11, stockColor, false);
         }

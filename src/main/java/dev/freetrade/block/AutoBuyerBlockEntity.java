@@ -25,7 +25,7 @@ public class AutoBuyerBlockEntity extends MarketStorageBlockEntity {
 
     @Override
     protected long computeUnitPrice(Market market) {
-        return market.quoteBuy(target, 1, 1.0);
+        return market.quoteBuy(target, market.lotSize(target), 1.0);
     }
 
     @Override
@@ -43,13 +43,13 @@ public class AutoBuyerBlockEntity extends MarketStorageBlockEntity {
             status = STATUS_NO_STOCK;
             return;
         }
-        long one = market.quoteBuy(target, 1, 1.0);
+        long one = market.quoteBuy(target, market.lotSize(target), 1.0);
         if (one < 0 || one > balance) {
             status = STATUS_NO_FUNDS;
             return;
         }
         long budget = balance;
-        long want = Math.min(space, FreeTradeConfig.machineBatch);
+        long want = Math.min(space, Math.max(FreeTradeConfig.machineBatch, market.lotSize(target)));
         String item = target;
         balance = 0; // escrow while the trade runs
         pending = true;

@@ -13,7 +13,7 @@ import net.minecraft.world.item.Items;
 
 /** Snapshot of the association's catalog for the guide book and the representative's buy tab. */
 public final class Catalog {
-    /** sell/buy: milli-U.M. for one unit (buy -1 when out of stock); lot: units per 1 U.M. when one unit is worth less. */
+    /** sell/buy: whole U.M. (as milli) for one lot (buy -1 when out of stock); lot: units traded together (1 unless one unit is worth less than 1 U.M.). */
     public record Entry(String item, long stock, long sell, long buy, int lot, boolean declared) {
         public static final StreamCodec<ByteBuf, Entry> CODEC = StreamCodec.of((buf, e) -> {
             ByteBufCodecs.STRING_UTF8.encode(buf, e.item);
@@ -52,9 +52,9 @@ public final class Catalog {
         for (String id : ids) {
             if (!m.isTradeable(id) || ItemKeys.item(id) == Items.AIR) continue;
             long stock = m.stock(id);
-            long sell = m.quoteSellNet(id, 1, 1.0);
-            long buy = stock > 0 ? m.quoteBuy(id, 1, 1.0) : -1;
-            long lot = sell >= 1000 ? 1 : m.engine().unitsPerOneUm(m.baseValue(id), m.reference(id), stock, 100_000);
+            long lot = m.lotSize(id);
+            long sell = m.quoteSell(id, lot, 1.0);
+            long buy = stock >= lot ? m.quoteBuy(id, lot, 1.0) : -1;
             out.add(new Entry(id, stock, sell, buy, (int) Math.max(-1, Math.min(Integer.MAX_VALUE, lot)),
                     snap.declared().containsKey(id)));
         }

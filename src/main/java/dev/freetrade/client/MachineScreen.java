@@ -138,7 +138,10 @@ public class MachineScreen<T extends MachineMenu> extends AbstractContainerScree
         boolean sellPoint = menu instanceof SellPointMenu;
         line(g, Component.translatable("freetrade.gui.machine.stored", menu.stored(), menu.capacity()), 18, dark);
         line(g, Component.translatable("freetrade.gui.machine.multiplier", menu.upgrades() + 1), 27, dark);
-        Component price = Component.translatable(sellPoint ? "freetrade.gui.machine.pays" : "freetrade.gui.machine.costs",
+        Component price = menu.lot() > 1
+                ? Component.translatable(sellPoint ? "freetrade.gui.machine.pays_lot" : "freetrade.gui.machine.costs_lot",
+                        Money.format(menu.unitPrice()), menu.lot())
+                : Component.translatable(sellPoint ? "freetrade.gui.machine.pays" : "freetrade.gui.machine.costs",
                 Money.format(menu.unitPrice()));
         line(g, price, 36, dark);
         line(g, Component.translatable("freetrade.gui.machine.balance", Money.format(menu.balance())), 45, dark);
@@ -188,6 +191,7 @@ public class MachineScreen<T extends MachineMenu> extends AbstractContainerScree
             case MarketStorageBlockEntity.STATUS_FULL -> "full";
             case MarketStorageBlockEntity.STATUS_ERROR -> "error";
             case MarketStorageBlockEntity.STATUS_WAITING_REDSTONE -> "waiting_redstone";
+            case MarketStorageBlockEntity.STATUS_LOT -> "lot";
             default -> "idle";
         };
     }

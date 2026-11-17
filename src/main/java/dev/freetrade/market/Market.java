@@ -213,24 +213,64 @@ public final class Market {
         return p;
     }
 
-    /** Milli-U.M. the association pays now for n units (before tax), scaled by durability factor. */
-    public long quoteSell(String item, long n, double factor) {
-        if (!isTradeable(item)) return 0;
-        return (long) (engine.sellValue(baseValue(item), reference(item), stock(item), n) * factor);
+    /**
+     * Units per lot: items worth less than 1 U.M. are only traded in multiples of a lot worth about 1 U.M.
+     * (a stick worth 0.5 U.M. is traded 2 at a time; never a single one). Items worth 1 U.M. or more: 1.
+     */
+    public long lotSize(String item) {
+        double unit = unitPrice(item);
+        if (unit <= 0) return 1;
+        if (unit >= 1.0) return 1;
+        // nearest whole count, at least 2: a lot is then worth about 1 U.M. and small price moves
+        // (0.5 -> 0.499) do not change the lot size
+        return Math.min(1_000_000L, Math.max(2L, Math.round(1.0 / unit)));
     }
 
-    public long quoteSellNet(String item, long n, double factor) {
-        long gross = quoteSell(item, n, factor);
+    private static long floorToLot(long n, long lot) {
+        return lot <= 1 ? n : (n / lot) * lot;
+    }
+
+    private static long ceilToLot(long n, long lot) {
+        return lot <= 1 ? n : ((n + lot - 1) / lot) * lot;
+    }
+
+    /** Real (unrounded) milli the association would pay for n units, after tax and durability, before backoff. */
+    private long realSellNet(String item, long n, double factor) {
+        long gross = (long) (engine.sellValue(baseValue(item), reference(item), stock(item), n) * factor);
         return gross - taxOf(gross, settings.taxSellPercent());
     }
 
-    /** Milli-U.M. the player pays now for n units, including tax and the player's current backoff. -1 if not possible. */
+    /**
+     * Whole U.M. (as milli) the association pays now for n units (rounded down to whole lots): the real total is
+     * computed first and then rounded half-up.
+     */
+    public long quoteSell(String item, long n, double factor) {
+        if (!isTradeable(item)) return 0;
+        long units = floorToLot(n, lotSize(item));
+        if (units <= 0) return 0;
+        return Money.roundHalfUp(realSellNet(item, units, factor));
+    }
+
+    /**
+     * Whole U.M. (as milli) the player pays now for n units (rounded up to whole lots), including tax and backoff:
+     * the real total is computed first and then rounded half-up. -1 if there is not enough stock.
+     */
     public long quoteBuy(String item, long n, double backoffMultiplier) {
         if (!isTradeable(item)) return -1;
-        long cost = PricingEngine.applyMultiplier(engine.buyCost(baseValue(item), reference(item), stock(item), n),
+        long units = ceilToLot(n, lotSize(item));
+        long cost = PricingEngine.applyMultiplier(engine.buyCost(baseValue(item), reference(item), stock(item), units),
                 backoffMultiplier);
         if (cost < 0) return -1;
-        return cost + taxOf(cost, settings.taxBuyPercent());
+        return Money.roundHalfUp(cost + taxOf(cost, settings.taxBuyPercent()));
+    }
+
+    /** Units actually traded for a request of n (sell: down to whole lots, buy: up to whole lots). */
+    public long sellUnits(String item, long n) {
+        return floorToLot(n, lotSize(item));
+    }
+
+    public long buyUnits(String item, long n) {
+        return ceilToLot(n, lotSize(item));
     }
 
     /** Current backoff multiplier of a player for an item (read from the database). */
@@ -249,46 +289,44 @@ public final class Market {
     // ------------------------------------------------------------------ trades (database thread)
 
     /**
-     * Sells up to {@code offered} units. With {@code wholeUnits} only the units needed for a whole number of
-     * U.M. are taken and the payout is whole U.M.; otherwise the exact milli payout is returned.
+     * Sells up to {@code offered} units, in whole lots. The real value of all units is computed (slippage, tax,
+     * durability, this player's backoff) and then rounded half-up to whole U.M. Leftover units are not taken.
      */
-    public CompletableFuture<SellResult> sell(TradeContext ctx, String item, long offered, double factor, boolean wholeUnits) {
+    public CompletableFuture<SellResult> sell(TradeContext ctx, String item, long offered, double factor) {
         if (!isTradeable(item) || offered <= 0) {
             return CompletableFuture.completedFuture(new SellResult(Error.NOT_TRADEABLE, 0, 0, 0, stock(item)));
         }
         final Settings st = settings;
+        final long lot = lotSize(item);
         return db.submit(c -> {
             long now = System.currentTimeMillis();
             long s = store.lockStock(c, item, stock(item));
             double b = baseValue(item), r = reference(item);
-            double netFactor = factor * (1 - st.taxSellPercent() / 100.0);
-            long units = wholeUnits ? engine.unitsForWholePayout(b, r, s, offered, netFactor) : offered;
-            if (units <= 0) return new SellResult(Error.TOO_FEW, 0, 0, 0, s);
-            long treasury = Long.MAX_VALUE;
-            if (st.treasuryInitialUm() >= 0) {
-                treasury = store.lockAccount(c, MarketStore.TREASURY);
-                if (grossOf(b, r, s, units, factor) > treasury) {
-                    long lo = 0, hi = units;
-                    while (lo < hi) {
-                        long mid = (lo + hi + 1) >>> 1;
-                        if (grossOf(b, r, s, mid, factor) <= treasury) lo = mid;
-                        else hi = mid - 1;
-                    }
-                    units = lo;
-                    if (wholeUnits && units > 0) units = engine.unitsForWholePayout(b, r, s, units, netFactor);
-                    if (units <= 0) return new SellResult(Error.TREASURY_EMPTY, 0, 0, 0, s);
-                }
+            BackoffTracker.State bs = null;
+            double penalty = 1.0;
+            if (st.backoff().enabled() && ctx.player() != null) {
+                bs = store.lockBackoff(c, ctx.player(), item);
+                penalty = BackoffTracker.current(bs, st.backoff(), now);
             }
-            long gross = grossOf(b, r, s, units, factor);
-            long tax = taxOf(gross, st.taxSellPercent());
-            long net = gross - tax;
-            if (wholeUnits) net = Money.ofUnits(Money.floorUnits(net));
+            long units = floorToLot(offered, lot);
+            if (units <= 0) return new SellResult(Error.TOO_FEW, 0, 0, 0, s);
+            long[] parts = sellParts(b, r, s, units, factor, penalty, st.taxSellPercent());
+            if (st.treasuryInitialUm() >= 0) {
+                long treasury = store.lockAccount(c, MarketStore.TREASURY);
+                while (units > 0 && parts[0] + parts[1] > treasury) {
+                    units -= lot;
+                    parts = units > 0 ? sellParts(b, r, s, units, factor, penalty, st.taxSellPercent()) : parts;
+                }
+                if (units <= 0) return new SellResult(Error.TREASURY_EMPTY, 0, 0, 0, s);
+            }
+            long net = parts[0], tax = parts[1], netReal = parts[2];
+            if (net <= 0) return new SellResult(Error.TOO_FEW, 0, 0, 0, s);
             long after = store.addStock(c, item, units);
             if (st.treasuryInitialUm() >= 0) store.addAccount(c, MarketStore.TREASURY, -(net + tax));
             if (tax > 0) store.addAccount(c, MarketStore.TAX, tax);
-            if (st.backoff().enabled() && ctx.player() != null) {
-                BackoffTracker.State bs = store.lockBackoff(c, ctx.player(), item);
+            if (bs != null) {
                 BackoffTracker.onSell(bs, now);
+                if (net > netReal) BackoffTracker.onRoundingGain(bs, st.backoff(), now);
                 store.saveBackoff(c, ctx.player(), item, bs);
             }
             store.insertTx(c, new MarketStore.Tx(now, st.serverId(), ctx.player(), ctx.playerName(), ctx.source(), item,
@@ -304,19 +342,34 @@ public final class Market {
         }).exceptionally(t -> new SellResult(Error.DATABASE, 0, 0, 0, stock(item)));
     }
 
-    private long grossOf(double b, double r, long s, long units, double factor) {
-        return (long) (engine.sellValue(b, r, s, units) * factor);
+    /** {rounded net payout, tax, real net} in milli. */
+    private long[] sellParts(double b, double r, long s, long units, double factor, double penalty, double taxPercent) {
+        long gross = (long) (engine.sellValue(b, r, s, units) * factor / penalty);
+        long tax = taxOf(gross, taxPercent);
+        long netReal = gross - tax;
+        return new long[]{Money.roundHalfUp(netReal), tax, netReal};
+    }
+
+    /** {rounded total, tax, real total} in milli, or null when there is not enough stock. */
+    private long[] buyParts(double b, double r, long s, long units, double mult, double taxPercent) {
+        long cost = PricingEngine.applyMultiplier(engine.buyCost(b, r, s, units), mult);
+        if (cost < 0) return null;
+        long tax = taxOf(cost, taxPercent);
+        long real = cost + tax;
+        return new long[]{Money.roundHalfUp(real), tax, real};
     }
 
     /**
-     * Buys from the association. {@code exact}: exactly {@code units} or nothing, failing if the cost exceeds the
-     * budget. Otherwise buys as many as the budget allows, up to {@code units}.
+     * Buys from the association, in whole lots. {@code exact}: exactly {@code units} (rounded up to whole lots) or
+     * nothing, failing if the cost exceeds the budget. Otherwise as many whole lots as the budget allows, up to
+     * {@code units}. The real total is computed first and then rounded half-up to whole U.M.
      */
     public CompletableFuture<BuyResult> buy(TradeContext ctx, String item, long units, long budgetMilli, boolean exact) {
         if (!isTradeable(item) || units <= 0) {
             return CompletableFuture.completedFuture(new BuyResult(Error.NOT_TRADEABLE, 0, 0, 0, stock(item)));
         }
         final Settings st = settings;
+        final long lot = lotSize(item);
         return db.submit(c -> {
             long now = System.currentTimeMillis();
             long s = store.lockStock(c, item, stock(item));
@@ -328,38 +381,41 @@ public final class Market {
                 bs = store.lockBackoff(c, ctx.player(), item);
                 mult = BackoffTracker.peek(bs, st.backoff(), now);
             }
-            double taxMult = 1 + st.taxBuyPercent() / 100.0;
             long n;
+            long[] parts;
             if (exact) {
-                if (units > s) return new BuyResult(Error.NO_STOCK, 0, 0, 0, s);
-                n = units;
+                n = ceilToLot(units, lot);
+                if (n > s) return new BuyResult(Error.NO_STOCK, 0, 0, 0, s);
+                parts = buyParts(b, r, s, n, mult, st.taxBuyPercent());
+                if (parts == null) return new BuyResult(Error.NO_STOCK, 0, 0, 0, s);
+                if (parts[0] > budgetMilli) return new BuyResult(Error.NO_FUNDS, 0, parts[0], 0, s);
             } else {
-                n = Math.min(units, engine.maxAffordable(b, r, s, budgetMilli, mult * taxMult));
-                if (n <= 0) return new BuyResult(Error.NO_FUNDS, 0, 0, 0, s);
-            }
-            long cost = PricingEngine.applyMultiplier(engine.buyCost(b, r, s, n), mult);
-            long tax = taxOf(cost, st.taxBuyPercent());
-            if (cost + tax > budgetMilli) {
-                if (!exact) {
-                    // rounding edge: drop one unit
-                    n--;
-                    if (n <= 0) return new BuyResult(Error.NO_FUNDS, 0, 0, 0, s);
-                    cost = PricingEngine.applyMultiplier(engine.buyCost(b, r, s, n), mult);
-                    tax = taxOf(cost, st.taxBuyPercent());
+                long max = floorToLot(Math.min(units, s), lot);
+                // binary search on whole lots for the most the budget pays (rounded totals grow with n)
+                long lo = 0, hi = max / Math.max(1, lot);
+                while (lo < hi) {
+                    long mid = (lo + hi + 1) >>> 1;
+                    long[] p = buyParts(b, r, s, mid * lot, mult, st.taxBuyPercent());
+                    if (p != null && p[0] <= budgetMilli) lo = mid;
+                    else hi = mid - 1;
                 }
-                if (cost + tax > budgetMilli) return new BuyResult(Error.NO_FUNDS, 0, cost + tax, 0, s);
+                n = lo * lot;
+                if (n <= 0) return new BuyResult(Error.NO_FUNDS, 0, 0, 0, s);
+                parts = buyParts(b, r, s, n, mult, st.taxBuyPercent());
             }
+            long total = parts[0], tax = parts[1], real = parts[2];
             long after = store.addStock(c, item, -n);
-            if (st.treasuryInitialUm() >= 0) store.addAccount(c, MarketStore.TREASURY, cost);
+            if (st.treasuryInitialUm() >= 0) store.addAccount(c, MarketStore.TREASURY, total - tax);
             if (tax > 0) store.addAccount(c, MarketStore.TAX, tax);
             if (bs != null) {
                 BackoffTracker.onBuy(bs, st.backoff(), now);
+                if (total < real) BackoffTracker.onRoundingGain(bs, st.backoff(), now);
                 store.saveBackoff(c, ctx.player(), item, bs);
             }
             store.insertTx(c, new MarketStore.Tx(now, st.serverId(), ctx.player(), ctx.playerName(), ctx.source(), item,
-                    -n, cost + tax, tax, after));
+                    -n, total, tax, after));
             accounts.putAll(store.loadAccounts(c));
-            return new BuyResult(Error.NONE, n, cost + tax, tax, after);
+            return new BuyResult(Error.NONE, n, total, tax, after);
         }).thenApply(res -> {
             if (res.ok()) {
                 stock.put(item, res.stockAfter());

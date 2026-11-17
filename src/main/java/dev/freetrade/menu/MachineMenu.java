@@ -109,6 +109,11 @@ public abstract class MachineMenu extends AbstractContainerMenu {
         return MarketStorageBlockEntity.join(data, 12);
     }
 
+    /** Units traded together (items worth less than 1 U.M. trade in lots). */
+    public long lot() {
+        return Math.max(1, MarketStorageBlockEntity.join(data, 16));
+    }
+
     public int currencyIndex() {
         return data.get(20);
     }

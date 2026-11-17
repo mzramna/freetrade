@@ -75,23 +75,6 @@ public final class PricingEngine {
         return (long) Math.ceil(Math.min(sum(base, ref, stock - n + 1, stock) * Money.SCALE, Long.MAX_VALUE));
     }
 
-    /**
-     * The fewest units (<= offered) that still pay the same number of WHOLE U.M. as all offered units.
-     * Used where only whole U.M. are paid out (villager): leftovers that would earn nothing are returned.
-     * Returns 0 when even all offered units do not reach 1 U.M.
-     */
-    public long unitsForWholePayout(double base, double ref, long stock, long offered, double factor) {
-        long target = Money.floorUnits((long) (sellValue(base, ref, stock, offered) * factor));
-        if (target <= 0) return 0;
-        long lo = 1, hi = offered;
-        while (lo < hi) {
-            long mid = (lo + hi) >>> 1;
-            if (Money.floorUnits((long) (sellValue(base, ref, stock, mid) * factor)) >= target) hi = mid;
-            else lo = mid + 1;
-        }
-        return lo;
-    }
-
     /** Most units that can be bought with a budget (milli). */
     public long maxAffordable(double base, double ref, long stock, long budgetMilli, double multiplier) {
         if (budgetMilli <= 0 || stock <= 0) return 0;
@@ -109,17 +92,5 @@ public final class PricingEngine {
         if (milli < 0) return milli;
         if (multiplier == 1.0) return milli;
         return (long) Math.ceil(Math.min(milli * multiplier, Long.MAX_VALUE));
-    }
-
-    /** Smallest lot (units) whose sell value reaches 1 U.M., capped; -1 if it never does within the cap. */
-    public long unitsPerOneUm(double base, double ref, long stock, long cap) {
-        long lo = 1, hi = cap;
-        if (sellValue(base, ref, stock, cap) < Money.SCALE) return -1;
-        while (lo < hi) {
-            long mid = (lo + hi) >>> 1;
-            if (sellValue(base, ref, stock, mid) >= Money.SCALE) hi = mid;
-            else lo = mid + 1;
-        }
-        return lo;
     }
 }

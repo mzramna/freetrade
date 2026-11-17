@@ -55,6 +55,27 @@ public final class BackoffTracker {
         return multiplier(s, cfg);
     }
 
+    /**
+     * Records a trade where rounding to whole U.M. favoured the player (e.g. selling one by one an item worth
+     * 1.5 U.M. to get 2 each). It counts like a round trip, so abusing it raises this player's backoff level
+     * for this item, which then penalises both selling and buying.
+     */
+    public static void onRoundingGain(State s, Settings cfg, long now) {
+        if (!cfg.enabled()) return;
+        decay(s, cfg, now);
+        s.roundTrips++;
+        s.lastRoundTripMs = now;
+        if (s.roundTrips >= cfg.threshold()) s.level = Math.min(cfg.maxLevel(), s.level + 1);
+    }
+
+    /** Current multiplier after decay, without predicting the next trade. */
+    public static double current(State s, Settings cfg, long now) {
+        if (!cfg.enabled()) return 1.0;
+        State copy = new State(s.lastSellMs, s.lastRoundTripMs, s.roundTrips, s.level);
+        decay(copy, cfg, now);
+        return multiplier(copy, cfg);
+    }
+
     /** Multiplier without recording anything (quotes). */
     public static double peek(State s, Settings cfg, long now) {
         if (!cfg.enabled()) return 1.0;
