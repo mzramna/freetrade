@@ -8,6 +8,7 @@ Sell Point and the Auto Buyer. For server settings, see the [configuration refer
 
 - [What is the Trade Association](#what-is-the-trade-association)
 - [Money: U.M. and money items](#money-um-and-money-items)
+- [Whole U.M. and lots](#whole-um-and-lots)
 - [The Trade Association Guide book](#the-trade-association-guide-book)
 - [Finding or creating a Trade Representative](#finding-or-creating-a-trade-representative)
 - [Selling to the Trade Representative](#selling-to-the-trade-representative)
@@ -57,6 +58,24 @@ Money is never traded as goods. You cannot sell emeralds to the association.
 When you receive change, it comes back as money items, largest first. For example, 10 U.M. of change with the default
 money is one emerald block (9 U.M.) and one emerald (1 U.M.).
 
+## Whole U.M. and lots
+
+Prices are always whole U.M. Every trade works the same way, whether you buy or sell:
+
+1. The association first computes the **real total** of the trade: the value of every unit (including slippage), the sell or buy tax, the durability of a damaged item, and your personal backoff.
+2. Only then is that total rounded to whole U.M., **half up**: .5 or more rounds up, and less than .5 rounds down.
+
+For example, 3 items worth 1.5 U.M. each cost 4.5 U.M. in total, so you pay 5 U.M., not 3 x 2 = 6. One item worth 1.4 U.M. costs 1 U.M., and two of them (2.8 U.M.) cost 3 U.M.
+
+Items worth less than 1 U.M. are traded only in **lots**. The lot size is the nearest whole number of units worth about 1 U.M., and never less than 2. A stick worth 0.5 U.M. is traded 2 at a time, never one alone.
+
+- Prices shown for such items are per lot.
+- Selling takes only whole lots. Units that do not make a whole lot go back to you (at the Trade Representative) or wait in storage (at a Sell Point).
+- Buying rounds the quantity up to whole lots, so buying 1 stick gives you 2.
+- The lot size follows the current price, so it can change when the stock changes.
+
+Rounding can also be used against the rules. Trading so that the rounding favours you, for example selling one at a time an item worth 1.5 U.M. to get 2 U.M. each time, counts as a round trip for the [backoff](#anti-storage-backoff).
+
 ## The Trade Association Guide book
 
 The Trade Association Guide is a book that shows the market. Craft it with a **book and an emerald** (in any
@@ -75,7 +94,7 @@ arrangement). Right-click it to open the guide. It has two tabs.
 **Catalog** lists every item the association trades:
 
 - a search box (by name or item id);
-- the sell price and the buy price for one unit (the buy price shows "Out of stock" when there is no stock);
+- the sell price and the buy price for one unit, or for one lot when the item is traded in lots (the buy price shows "Out of stock" when there is no stock);
 - the lot size, when one unit is worth less than 1 U.M. (for example, "2 units = 1 U.M.");
 - the current stock;
 - a filter for **All**, **In stock** and **Out of stock**;
@@ -120,9 +139,7 @@ The left side of the window is a sell grid:
   altogether;
 - items that cannot be traded are refused.
 
-When you press **Sell**, the association pays **only whole U.M.**. It takes just enough units to earn the whole U.M.
-it pays, and gives back the rest. For example, if 3 sticks would pay 1.5 U.M., the association takes 2 sticks,
-pays 1 U.M., and returns the third stick.
+When you press **Sell**, the association takes your units in whole lots, works out their real total, and pays that total rounded to whole U.M. (see [Whole U.M. and lots](#whole-um-and-lots)). Units that do not make a whole lot are given back. For example, sticks are worth 0.5 U.M. each and are traded 2 at a time. If you offer 3 sticks, the association takes 2 sticks, pays 1 U.M., and returns the third stick.
 
 The payout is given as money items, largest first. If the Lightman's bank option is on, the payout goes into your
 bank account instead.
@@ -132,8 +149,10 @@ bank account instead.
 The right side of the window is the catalog:
 
 1. Search or filter the list and select an item.
-2. Set the quantity with **-64**, **-1**, **+1** and **+64**. You can buy up to 2,304 units at once.
+2. Set the quantity with **-64**, **-1**, **+1** and **+64**. The **-1** and **+1** buttons move by one lot, and **-64** and **+64** move by 64 lots. For items worth 1 U.M. or more, a lot is one unit. You can buy up to 2,304 units at once.
 3. Check the estimated cost, then press **Buy**.
+
+The quantity is rounded up to whole lots. For example, buying 1 stick, when sticks are traded 2 at a time, gives you 2.
 
 Payment rules:
 
@@ -143,8 +162,7 @@ Payment rules:
   the message tells you how much you need;
 - if the price changed between your click and the purchase, you will see a message and can try again;
 - buy prices include the buy tax and, when it applies to you, your personal backoff;
-- a change amount smaller than the smallest money item cannot be given back. With only emeralds as money, the
-  purchase price can include a fraction of a U.M. that is lost. Keep exact change when you can.
+- prices are whole U.M., so with emeralds as money no change is lost. If the server uses money items worth a fraction of a U.M., a change amount smaller than the smallest money item cannot be given back. Keep exact change when you can.
 
 **Bank** button: only shown when Lightman's Currency is installed and the server allows it. When it is on, the purchase
 is paid from your Lightman's bank account, and the change is deposited back into it. If the bank cannot pay, the
@@ -175,8 +193,7 @@ barrel touching the block adds one more set of 54 stacks, up to five containers,
 capacity. Chests include trapped chests. If you remove a container and the stored items no longer fit, the block
 stops accepting items until they fit again.
 
-**Selling.** While the block is powered, it sells up to 64 units about once a second (the server can change the speed
-and batch size). The money goes into the block's balance, and the balance keeps exact amounts (fractions included).
+**Selling.** While the block is powered, it sells up to 64 units about once a second (the server can change the speed and batch size). It sells whole lots only: a leftover smaller than a lot stays in storage until more arrives. The money goes into the block's balance, in whole U.M. when the money items are whole U.M.
 
 **Money in the block.**
 
@@ -193,8 +210,7 @@ selected money item, and only while the block is powered and has enough balance.
 **Ownership.** The player who places the block is its owner. Only the owner and server operators can open the block
 or break it. A block placed without a player (for example, by a command) has no owner, and anyone can use it.
 
-Status messages in the GUI tell you why the block is not selling, for example "Waiting for redstone signal", "Out of
-stock" or "Storage full".
+Status messages in the GUI tell you why the block is not selling, for example "Waiting for redstone signal", "Out of stock", "Storage full" or "Waiting for a full lot".
 
 ## Auto Buyer
 
@@ -205,7 +221,7 @@ To make it, see [Finding or creating a Trade Representative](#finding-or-creatin
 **Setting the target.** Use the same ghost slot as the Sell Point. You can change it only when no items are stored.
 
 **Money.** Money items you put into the block become its balance. The block buys the target while it has balance, the
-association has stock, and there is space in the storage. It buys up to 64 units per cycle, at the catalog buy price,
+association has stock, and there is space in the storage. It buys whole lots, up to 64 units per cycle, at the catalog buy price,
 and it does **not** need a redstone signal to buy.
 
 **Taking items.** The owner can take bought items and the leftover balance back by hand. Hoppers can take bought items
@@ -235,13 +251,14 @@ The guide and the `/freetrade price` command always show the current numbers.
 
 ## Anti-storage backoff
 
-The association is not a warehouse. If you sell an item and buy it back within the **backoff window** (default 600
-seconds, which is 10 minutes), that counts as a **round trip**. Once you have made the **threshold** number of round
-trips (default 3), each further round trip raises your buy price for that item by **10% per level**, up to a maximum of
-20 levels (+200%).
+The association is not a warehouse. If you sell an item and buy it back within the **backoff window** (default 600 seconds, which is 10 minutes), that counts as a **round trip**. A **rounding gain** also counts as a round trip: a trade where rounding to whole U.M. favoured you, such as selling one at a time an item worth 1.5 U.M. to get 2 U.M. each time (see [Whole U.M. and lots](#whole-um-and-lots)). Once you have made the **threshold** number of round trips (default 3), each further round trip raises your penalty level for that item by one, up to a maximum of 20 levels.
 
-Your penalty goes down by one level for every full window without round trips. The penalty is tracked per player and
-per item. Server operators can change all of these values; see the [configuration reference](configuration.md#fees).
+The penalty level applies to that item only, and it has two effects:
+
+- your buy price for the item rises by **10% per level** (+200% at level 20);
+- your payout for selling the item is divided by 1 + 10% x level. At level 2 (+20%) you receive about 83% of the normal payout (1 / 1.2), and at level 20 you receive one third.
+
+Your penalty goes down by one level for every full window without round trips. The penalty is tracked per player and per item, and it does not affect anyone else. Server operators can change all of these values; see the [configuration reference](configuration.md#fees).
 
 ## Checking a price with /freetrade price
 
@@ -253,8 +270,8 @@ per item. Server operators can change all of these values; see the [configuratio
 Anyone can run it. The answer shows:
 
 - the stock in the association;
-- what the association pays you per unit (after sell tax);
-- what the association charges per unit (with buy tax, for one unit at the current stock);
+- what the association pays you per unit, after sell tax (per lot for items traded in lots);
+- what the association charges per unit, with buy tax, at the current stock (per lot for items traded in lots);
 - how many units make 1 U.M., when one unit is worth less than 1 U.M.;
 - the base value and whether it was declared by the server or derived from recipes.
 
@@ -275,3 +292,4 @@ Money items show their value. Items that are not traded say "is not traded".
 | "The price changed. Please try again." | The price moved between your click and the purchase. Try again. |
 | The Sell Point does not sell. | Check that it has a redstone signal and that the GUI shows a target and stored items. |
 | The Auto Buyer does not buy. | Check the balance, the target, the stock and the free space in the GUI. |
+| The Sell Point shows "Waiting for a full lot". | The stored amount is smaller than one lot of the item, so it waits until more arrives. |

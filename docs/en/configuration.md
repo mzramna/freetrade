@@ -125,10 +125,10 @@ check_interval_ticks = 100
 | `tax_on_sell_percent` | double | `0.0` | 0 to 100 | Percent of every sale to the association that goes to the tax account (operators' account). The player receives the rest. | `5.0` |
 | `tax_on_buy_percent` | double | `0.0` | 0 to 1000 | Percent added to every purchase from the association. The extra money goes to the tax account. | `2.5` |
 | `backoff_enabled` | boolean | `true` | true / false | Turns the anti-storage backoff on or off. | `true` |
-| `backoff_threshold` | integer | `3` | 1 to 1000 | Round trips (sell, then buy back the same item within the window) before the penalty starts growing. | `5` |
+| `backoff_threshold` | integer | `3` | 1 to 1000 | Round trips before the penalty starts growing. A round trip is a sell followed by a buy back of the same item within the window. A trade where rounding to whole U.M. favoured the player also counts as a round trip. | `5` |
 | `backoff_window_seconds` | integer | `600` | 1 to 2592000 | Length of the window that defines a round trip, and of one idle window (seconds). | `1200` |
-| `backoff_percent` | double | `10.0` | 0 to 1000 | Percent added to the buy price for each penalty level. | `15.0` |
-| `backoff_max_level` | integer | `20` | 1 to 1000 | Maximum penalty level. With the defaults, the price rises by at most 200%. | `10` |
+| `backoff_percent` | double | `10.0` | 0 to 1000 | Percent added to the buy price for each penalty level. The payout for selling the item is divided by 1 + percent / 100 x level. | `15.0` |
+| `backoff_max_level` | integer | `20` | 1 to 1000 | Maximum penalty level. With the defaults, the buy price rises by at most 200%, and the payout for selling falls to one third at most. | `10` |
 | `treasury_initial` | integer (U.M.) | `-1` | -1 to 9223372036854775 | `-1` means an infinite treasury: trades do not touch it, so it always pays. Any other value makes the treasury finite: selling to the association is paid from it, buying from it refills it, and when it is empty the association stops buying from players. Its value is the starting balance, which is written only when the database is first created. Later changes do not reset the balance; use `/freetrade treasury deposit` or `remove`. See [Economy settings](server-modpack-guide.md#economy-settings-tax-treasury-backoff). | `100000` |
 
 ### [machines]
@@ -282,6 +282,8 @@ config loads, so a typo is caught before the market uses it.
 - A trade is priced unit by unit. Selling `n` units at stock `S` pays the units valued at stock `S+1` to `S+n`.
   Buying `n` units at stock `S` charges the units valued at `S` down to `S-n+1`. Selling and buying back the same
   units therefore cost the same, and large trades move the price while they happen.
+- Every trade computes its real total first (unit prices with slippage, taxes, durability and the player's backoff), then rounds that total to whole U.M., half up. Shown prices are always whole U.M.
+- Items worth less than 1 U.M. are traded in lots: the nearest whole number of units worth about 1 U.M., and at least 2. Sales take whole lots, and purchases round up to whole lots. The lot size follows the current price.
 - Monetary amounts are stored in thousandths of a U.M.
 
 ### Worked examples
@@ -300,3 +302,5 @@ Assume `b = 10` U.M. and `r = 1000` (the defaults).
 
 Selling 2 units at stock 1000 with the default formula values them at `x = 1001` and `x = 1002`, because each unit
 is priced at the stock after it is added: `10 * 1000/1001 + 10 * 1000/1002`, about 19.97 U.M.
+
+Rounding: 3 items worth 1.5 U.M. each cost 4.5 U.M. in total, so the buyer pays 5 U.M. (half up). One item worth 1.4 U.M. costs 1 U.M.

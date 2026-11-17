@@ -143,8 +143,11 @@ public final class FreeTradeConfig {
         BACKOFF_ENABLED = b.comment(
                         "Devaluation backoff: discourages using the association as storage. When a player buys back an",
                         "item they sold within backoff_window_seconds, a round trip is counted. From",
-                        "backoff_threshold round trips on, every round trip raises the buy price of that item for that",
-                        "player by backoff_percent (stacking up to backoff_max_level). One level decays per idle window.")
+                        "backoff_threshold round trips on, every round trip raises that player's level for that item.",
+                        "Trades where the half-up rounding to whole U.M. favours the player (e.g. selling one by one an",
+                        "item worth 1.5) count the same way. Each level makes that player pay backoff_percent more and",
+                        "receive proportionally less (payout / (1 + percent x level)) for that item, up to",
+                        "backoff_max_level. One level decays per idle window.")
                 .define("backoff_enabled", true);
         BACKOFF_THRESHOLD = b.defineInRange("backoff_threshold", 3, 1, 1000);
         BACKOFF_WINDOW = b.defineInRange("backoff_window_seconds", 600, 1, 86400 * 30);
