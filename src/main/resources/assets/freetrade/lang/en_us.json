@@ -142,7 +142,7 @@
   "freetrade.tooltip.derived": "Value derived from recipes",
   "freetrade.tooltip.lot": "Traded in lots of %s",
   "freetrade.tooltip.money": "Money: %s U.M.",
-  "freetrade.tooltip.price": "Sells for %s U.M. · Buys for %s U.M. · Stock %s",
+  "freetrade.tooltip.price": "Sells for %s U.M. · Buys for %s U.M.",
   "freetrade.trader.bought": "Bought %s x %s for %s U.M.",
   "freetrade.trader.custom_item": "Enchanted, renamed or modified items are refused.",
   "freetrade.trader.no_money": "You need %s U.M. for this.",

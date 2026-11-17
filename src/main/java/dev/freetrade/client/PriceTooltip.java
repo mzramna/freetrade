@@ -31,8 +31,9 @@ public final class PriceTooltip {
         if (cat != null) {
             Catalog.Entry e = entryFor(cat, ItemKeys.id(stack));
             if (e != null) {
+                // price only: the association's stock is shown in the guide book, not in item tooltips
                 lines.add(Component.translatable("freetrade.tooltip.price", CatalogWidget.price(e.sell()),
-                        CatalogWidget.price(e.buy()), e.stock()).withStyle(ChatFormatting.GRAY));
+                        CatalogWidget.price(e.buy())).withStyle(ChatFormatting.GRAY));
                 if (e.lot() > 1) {
                     lines.add(Component.translatable("freetrade.tooltip.lot", e.lot()).withStyle(ChatFormatting.GRAY));
                 }

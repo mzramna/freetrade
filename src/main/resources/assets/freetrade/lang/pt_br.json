@@ -142,7 +142,7 @@
   "freetrade.tooltip.derived": "Valor derivado das receitas",
   "freetrade.tooltip.lot": "Negociado em lotes de %s",
   "freetrade.tooltip.money": "Dinheiro: %s U.M.",
-  "freetrade.tooltip.price": "Vende por %s U.M. · Compra por %s U.M. · Estoque %s",
+  "freetrade.tooltip.price": "Vende por %s U.M. · Compra por %s U.M.",
   "freetrade.trader.bought": "Comprados %s x %s por %s U.M.",
   "freetrade.trader.custom_item": "Itens encantados, renomeados ou modificados são recusados.",
   "freetrade.trader.no_money": "Você precisa de %s U.M. para isso.",
