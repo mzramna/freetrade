@@ -8,7 +8,7 @@ configurações econômicas que os operadores podem usar. Os nomes e padrões da
 ## Sumário
 
 - [Instalação](#instalação)
-- [Padrões do modpack (defaultconfigs)](#padrões-do-modpack-defaultconfigs)
+- [Config do servidor em modpacks e mundos](#config-do-servidor-em-modpacks-e-mundos)
 - [Escolhendo o banco de dados](#escolhendo-o-banco-de-dados)
 - [Compartilhando uma economia entre servidores](#compartilhando-uma-economia-entre-servidores)
 - [Preenchendo os valores de um modpack](#preenchendo-os-valores-de-um-modpack)
@@ -33,10 +33,15 @@ Java 25). No 26.1 só o JEI é suportado para arrastar itens, porque o EMI ainda
 
 Todo servidor que compartilha uma economia deve usar o mesmo modpack, para que as receitas e os valores batam.
 
-## Padrões do modpack (defaultconfigs)
+## Config do servidor em modpacks e mundos
 
-Coloque um `freetrade-server.toml` na pasta `defaultconfigs/` do modpack para definir os padrões dos mundos novos. O NeoForge
-copia o arquivo para a pasta `serverconfig/` do mundo quando ele é criado. Mundos existentes mantêm o arquivo que já têm.
+As configurações do servidor ficam em `config/freetrade-server.toml` na pasta da instância. A instância é a pasta do
+servidor, ou a pasta do jogo no single player. O arquivo é criado na primeira inicialização, e vale para todos os mundos
+daquela instância. Para distribuir configurações padrão em um modpack, inclua `config/freetrade-server.toml` no pacote.
+
+Para dar a um mundo configurações próprias, coloque uma cópia em `<mundo>/serverconfig/freetrade-server.toml`. O NeoForge
+usa essa cópia naquele mundo, em vez do arquivo da instância, e grava um `readme.txt` na pasta que explica isso. Mudanças
+no arquivo da instância não chegam a um mundo que tem cópia própria.
 
 Coloque o seu `values.json` na pasta `config/freetrade/` do modpack. O Livre Comércio o carrega quando o jogo inicia, e não
 sobrescreve um arquivo que já exista. Veja [Preenchendo os valores de um modpack](#preenchendo-os-valores-de-um-modpack).
@@ -91,6 +96,17 @@ volumes:
 
 Se o banco não puder ser alcançado quando o servidor inicia, o Livre Comércio registra um erro, a negociação fica
 desligada até que você reinicie o servidor, e os comandos respondem "O mercado está offline no momento."
+
+### Nota para desenvolvedores: testes com PostgreSQL
+
+O repositório tem um teste de integração, `MarketPostgresTest`, que roda duas instâncias do mercado em um mesmo banco
+PostgreSQL, do mesmo jeito que dois servidores compartilham uma economia. Para rodá-lo:
+
+```
+FT_PG_URL=jdbc:postgresql://host:port/db FT_PG_USER=... FT_PG_PASSWORD=... ./gradlew test
+```
+
+O teste é pulado quando `FT_PG_URL` não está definido, então `./gradlew test` roda sem banco.
 
 ## Compartilhando uma economia entre servidores
 

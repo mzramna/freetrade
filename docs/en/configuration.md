@@ -30,10 +30,13 @@ language. For a step-by-step guide to setting up a server or a modpack, see the
 
 | File | Where | Created | Purpose |
 |------|-------|---------|---------|
-| `freetrade-server.toml` | `serverconfig/` inside the world folder | On first start of the world | All settings except item values. |
-| `freetrade-server.toml` | `defaultconfigs/` in a modpack | You create it | Defaults copied into new worlds. |
+| `freetrade-server.toml` | `config/` in the instance folder: the server folder, or the game folder in singleplayer. Applies to every world of the instance. | On first start. A modpack can ship it in `config/`. | All settings except item values. |
+| `freetrade-server.toml` | `serverconfig/` in a world folder | You create it, if the world needs its own settings | Replaces the instance file for that world only. NeoForge writes a `readme.txt` there. |
 | `values.json` | `config/freetrade/` | On the first load, with a default list | Base values, reference stock, starting stock and excluded items. |
 | `freetrade.db` | World folder (SQLite) | On first start | The market database. |
+
+A world that has its own `serverconfig/freetrade-server.toml` uses that copy instead of the instance file. Changes to
+the instance file do not reach such a world.
 
 The server applies `freetrade-server.toml` when NeoForge loads or reloads the config. Database settings (`[database]`)
 are read only when the server starts, so change them with the server stopped. Changes to `values.json` are applied by

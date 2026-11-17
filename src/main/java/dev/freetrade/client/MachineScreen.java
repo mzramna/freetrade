@@ -30,7 +30,7 @@ public class MachineScreen<T extends MachineMenu> extends AbstractContainerScree
     private static final int GHOST_X = 8, GHOST_Y = 18;
     private static final int MONEY_X = 140, MONEY_Y = 40;
     private static final int SIZE = 18;
-    private static final int TEXT_X = 40, TEXT_W = 94;
+    private static final int TEXT_X = 30, TEXT_W = 106;
 
     public MachineScreen(T menu, Inventory inv, Component title) {
         super(menu, inv, title, 176, 186);
@@ -133,7 +133,6 @@ public class MachineScreen<T extends MachineMenu> extends AbstractContainerScree
         // owner, top right
         String owner = font.plainSubstrByWidth(Component.translatable("freetrade.gui.machine.owner", menu.ownerName()).getString(), 80);
         g.text(font, owner, imageWidth - 8 - font.width(owner), 6, 0xFF707070, false);
-        g.text(font, Component.translatable("freetrade.gui.machine.target_label"), 8, 38, dark, false);
         g.text(font, Component.translatable("freetrade.gui.machine.input"), 8, 66, dark, false);
 
         boolean sellPoint = menu instanceof SellPointMenu;

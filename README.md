@@ -49,8 +49,8 @@ To trade, place an **Auto Buyer** near an unemployed villager, then right-click 
 The [player guide](docs/en/player-guide.md) covers selling, buying, the Sell Point and the Auto Buyer.
 
 **Server owners and modpack makers.** Install the jar on the server and on every client. Set the settings in
-`serverconfig/freetrade-server.toml` (or `defaultconfigs/` in a modpack), and declare item values in
-`config/freetrade/values.json`. After adding mods, run `/freetrade recalc`. The
+`config/freetrade-server.toml` in the server folder (a modpack ships it in its `config/` folder), and declare item values
+in `config/freetrade/values.json`. A single world can have its own settings in `<world>/serverconfig/`. After adding mods, run `/freetrade recalc`. The
 [server and modpack guide](docs/en/server-modpack-guide.md) explains the database choice, sharing an economy, and
 backups.
 

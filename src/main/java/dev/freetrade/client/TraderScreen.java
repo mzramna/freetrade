@@ -185,7 +185,11 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
 
         // left: sell grid
         g.text(font, Component.translatable("freetrade.gui.trader.sell_label"), x + 8, y + 18, dark, false);
-        g.text(font, font.plainSubstrByWidth(sellInfo(), 108), x + 62, y + 89, dark, false);
+        int ly = y + 85;
+        for (var line : font.split(Component.literal(sellInfo()), 108).stream().limit(2).toList()) {
+            g.text(font, line, x + 62, ly, dark, false);
+            ly += 9;
+        }
 
         // right: header, quantity and selection
         g.text(font, Component.translatable("freetrade.gui.trader.buy"), x + RX, y + 6, dark, false);
@@ -220,7 +224,7 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
         Catalog.Entry e = entryFor(ItemKeys.id(kind));
         if (e == null || e.sell() <= 0) return base;
         long est = e.sell() * menu.gridCount();
-        return Component.translatable("freetrade.gui.trader.estimate", Money.format(est)).getString() + "  " + base;
+        return Component.translatable("freetrade.gui.trader.estimate", Money.format(est)).getString() + " " + base;
     }
 
     private static Catalog.Entry entryFor(String id) {

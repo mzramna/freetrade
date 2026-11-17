@@ -49,8 +49,8 @@ novo Representante Comercial. O [guia do jogador](docs/pt-br/player-guide.md) co
 Compra Automática.
 
 **Donos de servidor e criadores de modpack.** Instale o jar no servidor e em todos os clientes. Ajuste as configurações em
-`serverconfig/freetrade-server.toml` (ou em `defaultconfigs/` no modpack), e declare os valores dos itens em
-`config/freetrade/values.json`. Depois de adicionar mods, rode `/freetrade recalc`. O
+`config/freetrade-server.toml` na pasta do servidor (um modpack o distribui na pasta `config/`), e declare os valores dos
+itens em `config/freetrade/values.json`. Um mundo específico pode ter configurações próprias em `<mundo>/serverconfig/`. Depois de adicionar mods, rode `/freetrade recalc`. O
 [guia do servidor e do modpack](docs/pt-br/server-modpack-guide.md) explica a escolha do banco, o compartilhamento de uma
 economia e os backups.
 
