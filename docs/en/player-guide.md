@@ -257,7 +257,7 @@ Representative.
   move with supply, and the guide and `/freetrade price` show that price.
 - **Ceiling.** The server can cap the price of one unit, so a very scarce item cannot cost more than the cap.
 - **Taxes.** The server can add a percentage to sales and purchases. Taxes go to the operators' tax account, not to
-  the treasury.
+  the treasury. Some items may have their own tax, which replaces the server-wide one; the prices shown already include it.
 
 The guide and the `/freetrade price` command always show the current numbers.
 

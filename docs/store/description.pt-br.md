@@ -25,8 +25,9 @@ de outros mods também ganham preço automaticamente.
 - **Dicas de preço.** Passe o mouse sobre um item no inventário para ver quanto a associação paga e cobra.
 - **Dinheiro.** Esmeraldas e blocos de esmeralda por padrão, outros itens se o servidor escolher, e moedas e contas bancárias
   do Lightman's Currency quando esse mod está instalado.
-- **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, um backoff
-  anti-armazenamento contra idas e voltas e abuso de arredondamento, e uma tesouraria finita opcional.
+- **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, em porcentagem
+  ou valor fixo por unidade, globais ou por item. Um backoff anti-armazenamento contra idas e voltas e abuso de
+  arredondamento, e uma tesouraria finita opcional.
 - **Gatilhos e comandos.** Comandos para blocos de comando, como uma consulta de tesouraria para um comparador, e gatilhos que
   rodam um comando quando uma conta chega a uma condição.
 - **Ferramentas de administração.** Ajuste o estoque, fixe um preço, recalcule os valores das receitas e declare valores base

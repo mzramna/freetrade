@@ -205,6 +205,11 @@ Estas configurações estão na seção `[fees]` do arquivo de configuração do
 `tax_on_buy_percent` acrescenta uma porcentagem a cada compra. Os dois vão para a conta de imposto. Os impostos fazem parte
 do preço que o jogador vê, então aparecem no catálogo e em `/freetrade price`.
 
+**Impostos por item.** O operador pode dar a um item o seu próprio imposto de venda ou de compra, com `/freetrade tax` ou
+na seção `taxes` do `values.json`. Um imposto por item substitui a porcentagem global para esse item e essa direção,
+então um item pode ser taxado de forma diferente do resto do mercado. `0` isenta um item. Veja
+[Impostos por item](configuration.md#impostos-por-item) e a [referência de comandos](commands.md#impostos-por-item).
+
 **Tesouraria.** `treasury_initial = -1` (o padrão) torna a tesouraria infinita. As negociações não a tocam, então a
 associação sempre paga. Uma tesouraria finita é o dinheiro da própria associação:
 

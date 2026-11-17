@@ -49,8 +49,9 @@ jogadores negociam com o mercado por meio de aldeões Representantes Comerciais,
 - **Dicas de preço.** Passe o mouse sobre um item no inventário para ver quanto a associação paga e cobra.
 - **Dinheiro.** Esmeraldas e blocos de esmeralda por padrão, outros itens se o servidor escolher, e moedas e contas bancárias
   do Lightman's Currency quando esse mod está instalado.
-- **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, um backoff
-  anti-armazenamento contra idas e voltas e abuso de arredondamento, e uma tesouraria finita opcional.
+- **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, em porcentagem
+  ou valor fixo por unidade, globais ou por item. Um backoff anti-armazenamento contra idas e voltas e abuso de
+  arredondamento, e uma tesouraria finita opcional.
 - **Gatilhos.** Consultas para blocos de comando, como `/freetrade treasury query >= 1000`, e comandos que rodam quando uma
   conta chega a uma condição.
 - **Ferramentas de administração.** `/freetrade stock`, `forceprice`, `recalc`, e valores base declarados no `values.json`.

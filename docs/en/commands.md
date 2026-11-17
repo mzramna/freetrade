@@ -9,6 +9,7 @@ settings these commands change, see the [configuration reference](configuration.
 - [Player command](#player-command)
 - [Admin commands](#admin-commands)
 - [Stock and forced prices](#stock-and-forced-prices)
+- [Per-item taxes](#per-item-taxes)
 - [Accounts: treasury and tax](#accounts-treasury-and-tax)
 - [Triggers](#triggers)
 - [Examples](#examples)
@@ -18,7 +19,7 @@ settings these commands change, see the [configuration reference](configuration.
 | Who | Commands |
 |-----|----------|
 | Any player | `price` |
-| Operators (permission level 2 or higher), and command blocks at their default level | Everything else: `recalc`, `reload`, `stock`, `setstock`, `forceprice`, `setvalue`, `unpriced`, `history`, `account`, `treasury`, `taxaccount`, `trigger` |
+| Operators (permission level 2 or higher), and command blocks at their default level | Everything else: `recalc`, `reload`, `stock`, `setstock`, `forceprice`, `setvalue`, `unpriced`, `history`, `account`, `treasury`, `taxaccount`, `tax`, `trigger` |
 
 Commands that change money print the new balance. Commands that return a number use it as the command result, which
 command blocks can read (see [Accounts](#accounts-treasury-and-tax)).
@@ -50,6 +51,11 @@ command blocks can read (see [Accounts](#accounts-treasury-and-tax)).
 | `/freetrade setvalue <item> <value>` | Writes the item's base value to `values.json` and reloads. A value of `0` removes the declared value. Derived values of other items are not changed until `recalc`. |
 | `/freetrade unpriced [page]` | Lists items that have no price, 15 per page. Page 1 is the default. |
 | `/freetrade history [item]` | Shows the last 10 transactions, optionally only for one item. Each line shows the server id, time, player, quantity, item, amount, tax and the stock after the trade. |
+| `/freetrade tax list` | Lists the per-item taxes in `values.json`, with the sell and buy value of each item or tag. See [Per-item taxes](#per-item-taxes). |
+| `/freetrade tax <item>` | Shows the sell and buy tax of an item. `(global)` means the item uses the global percentage. |
+| `/freetrade tax <item> sell <value>` | Sets the sell tax of an item, as `5%` or as a fixed amount such as `2`. |
+| `/freetrade tax <item> buy <value>` | Sets the buy tax of an item, as `5%` or as a fixed amount such as `2`. |
+| `/freetrade tax <item> clear [sell\|buy]` | Removes the per-item tax of an item, for one direction or both. The global tax applies again. |
 
 ## Stock and forced prices
 
@@ -77,6 +83,33 @@ Forced prices are stored in the database, not in `values.json`, so servers that 
 
 Use `setvalue` when the item should keep reacting to supply. Use `forceprice` for a fixed price, such as a shop or event
 price.
+
+## Per-item taxes
+
+`/freetrade tax` gives one item its own sell tax, buy tax, or both. A per-item tax replaces the global percentage for
+that item and direction. For how the values work, see [Per-item taxes](configuration.md#per-item-taxes).
+
+### Syntax
+
+```
+/freetrade tax list
+/freetrade tax <item>
+/freetrade tax <item> sell <value>
+/freetrade tax <item> buy <value>
+/freetrade tax <item> clear
+/freetrade tax <item> clear sell
+/freetrade tax <item> clear buy
+```
+
+| Part | Meaning |
+|------|---------|
+| `<item>` | An item id, such as `minecraft:diamond`. Tags cannot be used with this command. |
+| `<value>` | `5%` for a percentage of the trade, or `2` for a fixed amount of U.M. per unit traded. Decimals and commas are allowed. |
+| `clear` | Removes the per-item tax. Without `sell` or `buy`, both directions are cleared. |
+
+The command writes the item's exact id to `values.json` and applies the change at once, so no `reload` is needed. Tag
+rules (`#tag`) are not set by the command: edit `values.json` and run `/freetrade reload`. Each command ends by showing
+the item's taxes. Like the other admin commands, it needs permission level 2.
 
 ## Accounts: treasury and tax
 
@@ -190,6 +223,10 @@ only the enabled state.
 /ft forceprice list                       (every forced price)
 /ft unpriced 2                            (second page of unpriced items)
 /ft history minecraft:diamond             (recent diamond trades)
+/ft tax list                              (every per-item tax)
+/ft tax minecraft:diamond sell 5%         (5% of each sale of diamonds)
+/ft tax minecraft:diamond buy 2           (2 U.M. per diamond bought)
+/ft tax minecraft:diamond clear buy       (buy tax back to the global value)
 /ft treasury deposit 500                  (add 500 U.M. to the treasury)
 /ft taxaccount balance                    (show the tax account)
 /ft taxaccount withdraw 50 minecraft:emerald_block

@@ -200,6 +200,11 @@ These settings are in the `[fees]` section of the server config. Their exact nam
 `tax_on_buy_percent` adds a percentage to each purchase. Both go to the tax account. Taxes are part of the price the
 player sees, so they show in the catalog and in `/freetrade price`.
 
+**Per-item taxes.** The operator can give one item its own sell or buy tax, with `/freetrade tax` or in the `taxes`
+section of `values.json`. A per-item tax replaces the global percentage for that item and direction, so an item can
+be taxed differently from the rest of the market. `0` exempts an item. See [Per-item taxes](configuration.md#per-item-taxes)
+and the [command reference](commands.md#per-item-taxes).
+
 **Treasury.** `treasury_initial = -1` (the default) makes the treasury infinite. Trades do not touch it, so the
 association always pays. A finite treasury is the association's own cash:
 

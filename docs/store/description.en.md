@@ -23,8 +23,9 @@ declared get a value from their recipes, so modded items are priced automaticall
 - **Price tooltips.** Hover over an item in your inventory to see what the association pays and charges.
 - **Money.** Emeralds and emerald blocks by default, any items the server chooses, and Lightman's Currency coins and bank
   accounts when that mod is installed.
-- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, an anti-storage backoff against
-  round trips and rounding abuse, and an optional finite treasury.
+- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, as a percentage or a fixed
+  amount per unit, set globally or per item. An anti-storage backoff against round trips and rounding abuse, and an
+  optional finite treasury.
 - **Triggers and commands.** Commands for command blocks, such as a treasury query for a comparator, and triggers that run
   a command when an account reaches a condition.
 - **Admin tools.** Adjust stock, force a fixed price, recalculate recipe values, and declare base values in `values.json`.

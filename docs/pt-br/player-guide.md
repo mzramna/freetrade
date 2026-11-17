@@ -260,7 +260,7 @@ comprados enquanto o bloco estiver energizado.
   com a oferta, e o guia e o `/freetrade price` mostram esse preço.
 - **Teto.** O servidor pode limitar o preço de uma unidade, para que um item muito escasso não custe mais que o teto.
 - **Impostos.** O servidor pode acrescentar uma porcentagem às vendas e às compras. Os impostos vão para a conta de
-  imposto dos operadores, não para a tesouraria.
+  imposto dos operadores, não para a tesouraria. Alguns itens podem ter imposto próprio, que substitui o imposto do servidor; os preços mostrados já o incluem.
 
 O guia e o comando `/freetrade price` sempre mostram os números atuais.
 
