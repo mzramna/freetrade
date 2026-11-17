@@ -89,7 +89,14 @@ disposição). Clique com o botão direito para abrir o guia. Ele tem duas abas.
 4. O Representante Comercial.
 5. Ponto de Venda.
 6. Compra Automática.
-7. Impostos, backoff e tesouraria. As taxas atuais aparecem no cabeçalho.
+7. Impostos, backoff e tesouraria. As taxas atuais aparecem na própria página.
+
+As páginas descrevem o servidor em que você está, com as configurações dele, e nunca os padrões: os itens de dinheiro e
+os seus valores, a fórmula de preço, o estoque de referência padrão, o teto e o preço mínimo, o percentual de mão de
+obra, se os valores acompanham os ingredientes, quantas pilhas um Representante Comercial aceita, se itens danificados
+são aceitos, o tamanho e o intervalo de lote do Ponto de Venda e da Compra Automática, os impostos, o backoff e a
+tesouraria. O tipo de banco de dados aparece no cabeçalho. O livro lê esses números quando você o abre, e o botão
+**Atualizar** da aba Catálogo também os atualiza.
 
 **Catálogo** lista todos os itens que a associação negocia:
 
@@ -102,6 +109,10 @@ disposição). Clique com o botão direito para abrir o guia. Ele tem duas abas.
 
 Depois de abrir o guia ou uma janela de negociação, passar o mouse sobre um item no inventário também mostra o preço.
 Segure Shift para ver o tamanho do lote.
+
+O administrador do servidor pode esconder o catálogo dos jogadores. Então a aba Catálogo mostra um aviso em vez da lista.
+Operadores continuam vendo. A negociação com o Representante Comercial não é afetada: a janela dele sempre mostra os
+preços do catálogo.
 
 O catálogo mostra o preço de compra sem o seu backoff pessoal. Se você tiver uma penalidade de backoff, o preço real é
 mais alto. Veja [Backoff anti-armazenamento](#backoff-anti-armazenamento).
@@ -245,6 +256,8 @@ comprados enquanto o bloco estiver energizado.
   toras, as toras ficam mais baratas, e as tábuas e os gravetos feitos com elas também.
 - **Valores pelas receitas.** Itens que ninguém declarou recebem um valor da receita mais barata que os fabrica. Itens
   de mods também são precificados assim.
+- **Preços forçados.** Um operador pode fixar o preço de um item. Um preço fixo não segue a fórmula, então não se move
+  com a oferta, e o guia e o `/freetrade price` mostram esse preço.
 - **Teto.** O servidor pode limitar o preço de uma unidade, para que um item muito escasso não custe mais que o teto.
 - **Impostos.** O servidor pode acrescentar uma porcentagem às vendas e às compras. Os impostos vão para a conta de
   imposto dos operadores, não para a tesouraria.

@@ -14,7 +14,9 @@ configurações econômicas que os operadores podem usar. Os nomes e padrões da
 - [Preenchendo os valores de um modpack](#preenchendo-os-valores-de-um-modpack)
 - [Recalcular depois de adicionar mods](#recalcular-depois-de-adicionar-mods)
 - [Configurações econômicas (imposto, tesouraria, backoff)](#configurações-econômicas-imposto-tesouraria-backoff)
+- [Estoque e preços forçados](#estoque-e-preços-forçados)
 - [A conta de imposto e os comandos de operador](#a-conta-de-imposto-e-os-comandos-de-operador)
+- [O livro-guia e o catálogo](#o-livro-guia-e-o-catálogo)
 - [Gatilhos e blocos de comando](#gatilhos-e-blocos-de-comando)
 - [Backups](#backups)
 - [Solução de problemas](#solução-de-problemas)
@@ -125,6 +127,8 @@ Regras a seguir:
   gatilhos, e a recarrega a cada `cache_refresh_seconds` (padrão 10). Os preços vistos em um servidor podem estar atrasados
   esse tempo. As negociações em si rodam dentro de uma transação do banco que trava a linha do estoque, então dois
   servidores não conseguem vender as mesmas unidades duas vezes.
+- **Preços forçados são compartilhados.** Um preço forçado (`/freetrade forceprice`) fica guardado no banco de dados. Os
+  outros servidores o recebem na próxima atualização do cache.
 - **Gatilhos disparam uma vez.** A verificação de um gatilho é feita dentro de uma transação do banco que trava a linha do
   gatilho. Servidores que compartilham um banco nunca disparam o mesmo gatilho duas vezes. O comando roda no servidor que
   ganhou a trava.
@@ -174,7 +178,7 @@ preencher:
    `/freetrade unpriced` para achar itens sem preço.
 
 O estoque inicial vale só para itens que o mercado ainda não viu. Mudar `initial_stock` depois não muda o estoque de itens
-que já têm estoque. Use `/freetrade setstock` para isso.
+que já têm estoque. Use `/freetrade stock <item> set <quantidade>` para isso (o antigo `/freetrade setstock` faz o mesmo).
 
 ## Recalcular depois de adicionar mods
 
@@ -228,6 +232,22 @@ Exemplos de ajuste:
 - `dynamic_propagation = false` impede que os itens derivados acompanhem o preço atual dos ingredientes.
 - U.M. inteiras e lotes não são configurações: toda negociação é arredondada para U.M. inteiras (metade para cima), e itens que valem menos de 1 U.M. são negociados em lotes. Veja o [guia do jogador](player-guide.md#um-inteiras-e-lotes).
 
+## Estoque e preços forçados
+
+Use estes comandos para corrigir o mercado à mão. Eles mudam o mercado em tempo real.
+
+- `/freetrade stock <item> add <quantidade>` e `remove <quantidade>` corrigem o estoque por uma quantidade conhecida, e
+  `set` o coloca em um número. O estoque nunca fica abaixo de 0.
+- `/freetrade forceprice <item> set <valor>` fixa o preço de uma unidade. O preço continua o mesmo qualquer que seja o
+  estoque, então não cai quando os jogadores vendem nem sobe quando compram. Use para um preço que não deve mudar, como o
+  de um evento ou de uma loja. `/freetrade forceprice <item> clear` o remove.
+- `/freetrade setvalue` é diferente: muda o valor base no `values.json`, e a fórmula de preço continua valendo. Use quando
+  o item deve continuar acompanhando oferta e demanda.
+
+Confira os preços forçados com `/freetrade forceprice list`. Os preços forçados sobrevivem a `reload` e `recalc`. Eles
+ficam no banco de dados, então servidores que compartilham uma economia os compartilham (veja acima). Itens de dinheiro
+não podem receber mudança de estoque nem preço forçado.
+
 ## A conta de imposto e os comandos de operador
 
 A conta de imposto recolhe os impostos de venda e de compra. Os operadores a usam para recompensas e eventos:
@@ -241,6 +261,23 @@ A conta de imposto recolhe os impostos de venda e de compra. Os operadores a usa
 Os impostos se acumulam na conta conforme as negociações acontecem. Os operadores podem tirar dinheiro com `withdraw` (os
 itens vão para o operador que executa o comando) ou `give` (os itens vão para o jogador indicado). Um bloco de comando ou o console não tem jogador, então deve usar `give`: `withdraw` ali falha e não tira nada. A lista completa está na
 [referência de comandos](commands.md#contas-tesouraria-e-imposto).
+
+## O livro-guia e o catálogo
+
+O livro Guia da Associação Comercial lê as configurações do servidor em execução toda vez que é aberto. As páginas
+**Como funciona** mostram, portanto, os valores reais deste servidor. Depois de mudar a config, rode
+`/freetrade reload` e reabra o livro (ou use **Atualizar** na aba Catálogo). Veja o [guia do jogador](player-guide.md#o-guia-da-associação-comercial-livro).
+
+Para esconder o catálogo dos jogadores comuns, defina `show_catalog` na seção `[guide]` de `freetrade-server.toml`:
+
+```toml
+[guide]
+show_catalog = false
+```
+
+Com `false`, a aba Catálogo do livro fica vazia para os jogadores comuns e mostra um aviso. Operadores (nível de
+permissão 2) continuam vendo. A negociação com o Representante Comercial não é afetada, porque a janela dele sempre mostra
+os preços do catálogo. A chave está descrita na [referência de configuração](configuration.md#guide).
 
 ## Gatilhos e blocos de comando
 

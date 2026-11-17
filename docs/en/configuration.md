@@ -12,6 +12,7 @@ language. For a step-by-step guide to setting up a server or a modpack, see the
   - [[currency]](#currency)
   - [[fees]](#fees)
   - [[machines]](#machines)
+  - [[guide]](#guide)
   - [[database]](#database)
   - [[triggers]](#triggers)
 - [values.json](#valuesjson)
@@ -33,7 +34,7 @@ language. For a step-by-step guide to setting up a server or a modpack, see the
 | `freetrade-server.toml` | `config/` in the instance folder: the server folder, or the game folder in singleplayer. Applies to every world of the instance. | On first start. A modpack can ship it in `config/`. | All settings except item values. |
 | `freetrade-server.toml` | `serverconfig/` in a world folder | You create it, if the world needs its own settings | Replaces the instance file for that world only. NeoForge writes a `readme.txt` there. |
 | `values.json` | `config/freetrade/` | On the first load, with a default list | Base values, reference stock, starting stock and excluded items. |
-| `freetrade.db` | World folder (SQLite) | On first start | The market database. |
+| `freetrade.db` | World folder (SQLite) | On first start | The market database: stock, balances, triggers, history and forced prices. |
 
 A world that has its own `serverconfig/freetrade-server.toml` uses that copy instead of the instance file. Changes to
 the instance file do not reach such a world.
@@ -44,7 +45,7 @@ are read only when the server starts, so change them with the server stopped. Ch
 
 ## freetrade-server.toml
 
-The file has six sections. Each key lists its type, default, allowed range, and an example.
+The file has seven sections. Each key lists its type, default, allowed range, and an example.
 
 ```toml
 [market]
@@ -79,6 +80,9 @@ treasury_initial = -1
 interval_ticks = 20
 batch_size = 64
 villager_max_stacks = 27
+
+[guide]
+show_catalog = true
 
 [database]
 type = "SQLITE"
@@ -138,6 +142,12 @@ check_interval_ticks = 100
 | `interval_ticks` | integer | `20` | 1 to 72000 | Ticks (20 per second) between automatic sales and purchases of the Sell Point and the Auto Buyer. | `40` |
 | `batch_size` | integer | `64` | 1 to 100000 | Most units a machine trades in one operation. | `256` |
 | `villager_max_stacks` | integer | `27` | 1 to 27 | Stacks of one item a player can put in the Trade Representative's sell grid. The grid has 27 slots, so the range stops at 27. | `9` |
+
+### [guide]
+
+| Key | Type | Default | Range | Explanation | Example |
+|-----|------|---------|-------|-------------|---------|
+| `show_catalog` | boolean | `true` | true / false | Whether regular players can see the catalog tab of the Trade Association Guide book: the items the association trades, with their prices and stock. When `false`, the tab is empty for them and shows a notice. OPs (permission level 2) still see it. Trading with the Trade Representative is not affected. See [the guide book and the catalog](server-modpack-guide.md#the-guide-book-and-the-catalog). | `false` |
 
 ### [database]
 

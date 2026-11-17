@@ -14,7 +14,9 @@ setting names and defaults are listed in the [configuration reference](configura
 - [Seeding values for a modpack](#seeding-values-for-a-modpack)
 - [Recalculating after adding mods](#recalculating-after-adding-mods)
 - [Economy settings (tax, treasury, backoff)](#economy-settings-tax-treasury-backoff)
+- [Stock and forced prices](#stock-and-forced-prices)
 - [The tax account and operator commands](#the-tax-account-and-operator-commands)
+- [The guide book and the catalog](#the-guide-book-and-the-catalog)
 - [Triggers and command blocks](#triggers-and-command-blocks)
 - [Backups](#backups)
 - [Troubleshooting](#troubleshooting)
@@ -123,6 +125,8 @@ Rules to follow:
 - **Cache refresh.** With PostgreSQL, each server keeps a copy of stock, balances and triggers in memory and reloads
   it every `cache_refresh_seconds` (default 10). Prices shown on one server can lag by that long. Trades themselves run
   inside a database transaction that locks the stock row, so two servers cannot sell the same units twice.
+- **Forced prices are shared.** A forced price (`/freetrade forceprice`) is stored in the database. The other servers
+  pick it up at their next cache refresh.
 - **Triggers fire once.** The trigger check is done inside a database transaction that locks the trigger row. Servers
   that share a database never fire the same trigger twice. The command runs on the server that won the lock.
 
@@ -171,7 +175,7 @@ with. The full format is in the [configuration reference](configuration.md#value
    `/freetrade unpriced` to find items that have no price.
 
 Starting stock applies only to items the market has not seen before. Changing `initial_stock` later does not change
-the stock of items that already have stock. Use `/freetrade setstock` for that.
+the stock of items that already have stock. Use `/freetrade stock <item> set <amount>` for that (the older `/freetrade setstock` does the same).
 
 ## Recalculating after adding mods
 
@@ -223,6 +227,22 @@ Examples of tuning:
 - `dynamic_propagation = false` stops derived items from following the current price of their ingredients.
 - Whole U.M. and lots are not settings: every trade is rounded to whole U.M. (half up), and items worth less than 1 U.M. are traded in lots. See the [player guide](player-guide.md#whole-um-and-lots).
 
+## Stock and forced prices
+
+Use these commands to correct the market by hand. They change the live market at once.
+
+- `/freetrade stock <item> add <amount>` and `remove <amount>` correct the stock by a known amount, and `set` puts it at a
+  number. The stock never goes below 0.
+- `/freetrade forceprice <item> set <value>` fixes the price of one unit. The price stays the same whatever the stock,
+  so it does not fall when players sell or rise when they buy. Use it for a price that must not move, such as an event
+  or a shop price. `/freetrade forceprice <item> clear` removes it.
+- `/freetrade setvalue` is different: it changes the base value in `values.json`, and the price formula still applies.
+  Use it when the item should keep following supply and demand.
+
+Check the forced prices with `/freetrade forceprice list`. Forced prices survive `reload` and `recalc`. They are in the
+database, so servers that share an economy share them (see above). Money items cannot be given a stock change or a
+forced price.
+
 ## The tax account and operator commands
 
 The tax account collects the sell and buy taxes. Operators use it for rewards and events:
@@ -237,6 +257,23 @@ Taxes build up in the account as trades happen. Operators can take money out wit
 who runs the command) or `give` (items go to the named player). A command block or the console has no player, so it must use `give`:
 `withdraw` there fails and takes nothing. The full list is in the
 [command reference](commands.md#accounts-treasury-and-tax).
+
+## The guide book and the catalog
+
+The Trade Association Guide book reads its settings from the running server each time it is opened. Its **How it works**
+pages therefore show the real values of this server. After you change the config, run `/freetrade reload`, then reopen
+the book (or use **Refresh** in its Catalog tab). See the [player guide](player-guide.md#the-trade-association-guide-book).
+
+To hide the catalog from regular players, set `show_catalog` in the `[guide]` section of `freetrade-server.toml`:
+
+```toml
+[guide]
+show_catalog = false
+```
+
+With `false`, the Catalog tab of the book is empty for regular players and shows a notice. Operators (permission level 2)
+still see it. Trading with a Trade Representative is not affected, because its window always shows the catalog prices.
+The key is described in the [configuration reference](configuration.md#guide).
 
 ## Triggers and command blocks
 

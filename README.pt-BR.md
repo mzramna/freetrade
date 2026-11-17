@@ -31,8 +31,9 @@ Instale **no servidor e nos clientes**. Todo servidor que compartilha uma econom
   compre do catálogo na janela dele.
 - **Ponto de Venda e Compra Automática.** Máquinas que vendem um item com sinal de redstone, e compram um item com o dinheiro
   que você coloca nelas. Têm capacidade que cresce com baús e barris encostados.
-- **Guia da Associação Comercial.** Um livro com um tour em "Como funciona" e um catálogo pesquisável, com preços de compra e
-  venda, estoque e filtro de estoque.
+- **Guia da Associação Comercial.** Um livro com um tour em "Como funciona", que mostra as configurações do próprio servidor,
+  e um catálogo pesquisável, com preços de compra e venda, estoque e filtro de estoque. Os administradores podem esconder o
+  catálogo dos jogadores.
 - **Impostos, backoff e tesouraria.** Impostos opcionais de venda e compra para uma conta de operadores, um backoff anti-armazenamento para idas e voltas e para abuso de arredondamento, e uma tesouraria finita opcional.
 - **Dinheiro.** Esmeraldas e blocos de esmeralda por padrão, outros itens se o servidor escolher, e moedas e contas bancárias
   do Lightman's Currency quando esse mod está instalado.

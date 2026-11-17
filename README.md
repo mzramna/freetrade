@@ -31,8 +31,8 @@ Install it on **both the server and the clients**. Every server that shares an e
   buy from the catalog in its window.
 - **Sell Point and Auto Buyer.** Machines that sell an item on a redstone signal, and buy an item from money you put
   in them. They have capacity that grows with adjacent chests and barrels.
-- **Trade Association Guide.** A book with a "How it works" tour and a searchable catalog of buy and sell prices, stock
-  and a stock filter.
+- **Trade Association Guide.** A book with a "How it works" tour that shows the server's own settings, and a searchable
+  catalog of buy and sell prices, stock and a stock filter. Server admins can hide the catalog from players.
 - **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, an anti-storage backoff for round trips and rounding abuse, and an optional finite treasury.
 - **Money.** Emeralds and emerald blocks by default, any items the server chooses, and Lightman's Currency coins and
   bank accounts when that mod is installed.

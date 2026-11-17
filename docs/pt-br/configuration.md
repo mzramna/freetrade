@@ -12,6 +12,7 @@ valores e a linguagem da fórmula de preço. Para um passo a passo de configura�
   - [[currency]](#currency)
   - [[fees]](#fees)
   - [[machines]](#machines)
+  - [[guide]](#guide)
   - [[database]](#database)
   - [[triggers]](#triggers)
 - [values.json](#valuesjson)
@@ -33,7 +34,7 @@ valores e a linguagem da fórmula de preço. Para um passo a passo de configura�
 | `freetrade-server.toml` | `config/` na pasta da instância: a pasta do servidor, ou a pasta do jogo no single player. Vale para todos os mundos da instância. | Na primeira inicialização. Um modpack pode distribuí-lo em `config/`. | Todas as configurações, exceto os valores dos itens. |
 | `freetrade-server.toml` | `serverconfig/` na pasta de um mundo | Você cria, se o mundo precisar de configurações próprias | Substitui o arquivo da instância só para esse mundo. O NeoForge grava um `readme.txt` lá. |
 | `values.json` | `config/freetrade/` | Na primeira carga, com uma lista padrão | Valores base, estoque de referência, estoque inicial e itens excluídos. |
-| `freetrade.db` | Pasta do mundo (SQLite) | Na primeira inicialização | O banco de dados do mercado. |
+| `freetrade.db` | Pasta do mundo (SQLite) | Na primeira inicialização | O banco de dados do mercado: estoque, saldos, gatilhos, histórico e preços forçados. |
 
 Um mundo que tem o seu próprio `serverconfig/freetrade-server.toml` usa essa cópia no lugar do arquivo da instância.
 Mudanças no arquivo da instância não chegam a esse mundo.
@@ -45,7 +46,7 @@ banco (`[database]`) são lidas só quando o servidor inicia, então mude-as com
 
 ## freetrade-server.toml
 
-O arquivo tem seis seções. Cada chave lista o tipo, o padrão, a faixa permitida, a explicação e um exemplo.
+O arquivo tem sete seções. Cada chave lista o tipo, o padrão, a faixa permitida, a explicação e um exemplo.
 
 ```toml
 [market]
@@ -80,6 +81,9 @@ treasury_initial = -1
 interval_ticks = 20
 batch_size = 64
 villager_max_stacks = 27
+
+[guide]
+show_catalog = true
 
 [database]
 type = "SQLITE"
@@ -139,6 +143,12 @@ check_interval_ticks = 100
 | `interval_ticks` | inteiro | `20` | 1 a 72000 | Ticks (20 por segundo) entre as vendas e compras automáticas do Ponto de Venda e da Compra Automática. | `40` |
 | `batch_size` | inteiro | `64` | 1 a 100000 | Máximo de unidades que uma máquina negocia em uma operação. | `256` |
 | `villager_max_stacks` | inteiro | `27` | 1 a 27 | Pilhas de um item que o jogador pode colocar na grade de venda do Representante Comercial. A grade tem 27 espaços, então o intervalo termina em 27. | `9` |
+
+### [guide]
+
+| Chave | Tipo | Padrão | Faixa | Explicação | Exemplo |
+|-------|------|--------|-------|------------|---------|
+| `show_catalog` | booleano | `true` | true / false | Se jogadores comuns podem ver a aba de catálogo do livro Guia da Associação Comercial: os itens que a associação negocia, com preços e estoque. Quando `false`, a aba fica vazia para eles e mostra um aviso. Operadores (nível de permissão 2) continuam vendo. A negociação com o Representante Comercial não é afetada. Veja [o livro-guia e o catálogo](server-modpack-guide.md#o-livro-guia-e-o-catálogo). | `false` |
 
 ### [database]
 

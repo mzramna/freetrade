@@ -8,6 +8,7 @@ settings these commands change, see the [configuration reference](configuration.
 - [Who can run what](#who-can-run-what)
 - [Player command](#player-command)
 - [Admin commands](#admin-commands)
+- [Stock and forced prices](#stock-and-forced-prices)
 - [Accounts: treasury and tax](#accounts-treasury-and-tax)
 - [Triggers](#triggers)
 - [Examples](#examples)
@@ -17,7 +18,7 @@ settings these commands change, see the [configuration reference](configuration.
 | Who | Commands |
 |-----|----------|
 | Any player | `price` |
-| Operators (permission level 2 or higher), and command blocks at their default level | Everything else: `recalc`, `reload`, `setstock`, `setvalue`, `unpriced`, `history`, `account`, `treasury`, `taxaccount`, `trigger` |
+| Operators (permission level 2 or higher), and command blocks at their default level | Everything else: `recalc`, `reload`, `stock`, `setstock`, `forceprice`, `setvalue`, `unpriced`, `history`, `account`, `treasury`, `taxaccount`, `trigger` |
 
 Commands that change money print the new balance. Commands that return a number use it as the command result, which
 command blocks can read (see [Accounts](#accounts-treasury-and-tax)).
@@ -35,10 +36,47 @@ command blocks can read (see [Accounts](#accounts-treasury-and-tax)).
 |---------|-------------|
 | `/freetrade recalc` | Solves every derived value again from the current recipes and declared values, and stores them. The reply reports how many items are derived and unpriced, and how long it took. Runs in the background. |
 | `/freetrade reload` | Re-applies the server config and re-reads `values.json`. Derived values already stored are kept. |
-| `/freetrade setstock <item> <amount>` | Sets the stock of an item. The amount is a whole number, zero or more. |
+| `/freetrade stock <item>` | Shows the stock of an item. |
+| `/freetrade stock <item> set <amount>` | Sets the stock of an item. The amount is a whole number, zero or more. |
+| `/freetrade stock <item> add <amount>` | Adds to the stock, in one atomic change. The amount is a whole number, at least 1. |
+| `/freetrade stock <item> remove <amount>` | Takes from the stock, in one atomic change. The amount is a whole number, at least 1. The stock never goes below 0. Works for items that the database does not know yet. |
+| `/freetrade setstock <item> <amount>` | The older form of `stock <item> set <amount>`. It still works. |
+| `/freetrade forceprice <item>` | Shows the forced price of an item, or says that the formula applies. |
+| `/freetrade forceprice <item> set <value>` | Forces the price of one unit to `value` U.M. Decimals are allowed, and the minimum is 0.001. The forced price replaces the formula. |
+| `/freetrade forceprice <item> add <value>` | Raises the forced price by `value`. When no price is forced, it adds to the current market price. The result must stay above 0. |
+| `/freetrade forceprice <item> remove <value>` | Lowers the forced price by `value`. When no price is forced, it subtracts from the current market price. The result must stay above 0. |
+| `/freetrade forceprice <item> clear` | Removes the forced price, so the formula applies again. |
+| `/freetrade forceprice list` | Lists every forced price on the server. |
 | `/freetrade setvalue <item> <value>` | Writes the item's base value to `values.json` and reloads. A value of `0` removes the declared value. Derived values of other items are not changed until `recalc`. |
 | `/freetrade unpriced [page]` | Lists items that have no price, 15 per page. Page 1 is the default. |
 | `/freetrade history [item]` | Shows the last 10 transactions, optionally only for one item. Each line shows the server id, time, player, quantity, item, amount, tax and the stock after the trade. |
+
+## Stock and forced prices
+
+**Stock** is the number of units the association holds of an item. `stock <item> set`, `add` and `remove` change it.
+`add` and `remove` make one change to the stored number, so two changes made at the same time do not overwrite each
+other. The stock never goes below 0. `/freetrade stock` works for items that the database does not know yet. Money
+items are refused.
+
+**Forced prices** fix the price of one unit of an item, in U.M. A forced price replaces the formula for that item:
+
+- the price does not depend on the stock, so there is no slippage: a trade of any size pays the same price per unit
+  (trades still change the stock);
+- an item that has no value at all (no declared value and no recipe) becomes tradeable once it has a forced price;
+- derived items that use the item follow its forced price when `dynamic_propagation` is on;
+- whole-U.M. rounding and lots still apply, so a forced price of 0.25 U.M. is traded in lots of 4 units.
+
+Forced prices are stored in the database, not in `values.json`, so servers that share a PostgreSQL database share them.
+`reload` and `recalc` do not remove them; only `forceprice <item> clear` does. Money items cannot have a forced price.
+
+| | `setvalue` | `forceprice <item> set` |
+|---|---|---|
+| What it changes | The base value `b` of the item, in `values.json`. | The final price of one unit, in the database. |
+| Formula | Still applies: the price still moves with the stock. | Replaced: the price is the forced value. |
+| Derived items | Run `recalc` to update them. | Follow the forced price when `dynamic_propagation` is on. |
+
+Use `setvalue` when the item should keep reacting to supply. Use `forceprice` for a fixed price, such as a shop or event
+price.
 
 ## Accounts: treasury and tax
 
@@ -143,6 +181,13 @@ only the enabled state.
 /ft reload                                (apply it)
 /ft recalc                                (propagate it to derived items)
 /ft setstock minecraft:iron_ingot 5000    (set the stock)
+/ft stock minecraft:iron_ingot            (show the stock)
+/ft stock minecraft:iron_ingot add 100    (add 100 units)
+/ft stock minecraft:iron_ingot remove 500 (remove 500, never below 0)
+/ft forceprice minecraft:stick set 0.5    (0.5 U.M. per unit, whatever the stock)
+/ft forceprice minecraft:stick add 0.25   (now 0.75 U.M.)
+/ft forceprice minecraft:stick clear      (back to the formula)
+/ft forceprice list                       (every forced price)
 /ft unpriced 2                            (second page of unpriced items)
 /ft history minecraft:diamond             (recent diamond trades)
 /ft treasury deposit 500                  (add 500 U.M. to the treasury)
