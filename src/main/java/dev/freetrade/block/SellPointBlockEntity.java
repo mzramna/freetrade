@@ -26,7 +26,7 @@ public class SellPointBlockEntity extends MarketStorageBlockEntity {
 
     @Override
     protected long computeUnitPrice(Market market) {
-        return market.quoteSellNet(target, 1, 1.0);
+        return market.quoteSell(target, market.lotSize(target), 1.0);
     }
 
     @Override
@@ -39,12 +39,16 @@ public class SellPointBlockEntity extends MarketStorageBlockEntity {
             status = STATUS_IDLE;
             return;
         }
-        long n = Math.min(stored, FreeTradeConfig.machineBatch);
+        long n = Math.min(stored, Math.max(FreeTradeConfig.machineBatch, market.lotSize(target)));
+        if (market.sellUnits(target, n) <= 0) {
+            status = STATUS_LOT;
+            return;
+        }
         String item = target;
         stored -= n; // escrow while the trade runs
         pending = true;
         setChanged();
-        market.sell(tradeContext("sell_point"), item, n, 1.0, false).thenAccept(res -> onServer(() -> {
+        market.sell(tradeContext("sell_point"), item, n, 1.0).thenAccept(res -> onServer(() -> {
             pending = false;
             long back = n - (res.ok() ? res.units() : 0);
             if (isRemoved() && level != null) {

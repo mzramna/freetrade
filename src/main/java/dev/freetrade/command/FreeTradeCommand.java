@@ -129,9 +129,9 @@ public final class FreeTradeCommand {
             return 0;
         }
         long stock = m.stock(id);
-        long sell = m.quoteSellNet(id, 1, 1.0);
-        long buy = m.quoteBuy(id, 1, 1.0);
-        long lot = m.engine().unitsPerOneUm(m.baseValue(id), m.reference(id), stock, 100_000);
+        long lot = m.lotSize(id);
+        long sell = m.quoteSell(id, lot, 1.0);
+        long buy = m.quoteBuy(id, lot, 1.0);
         reply(s, Component.translatable("freetrade.price.header", item.getDescription(), stock));
         reply(s, Component.translatable("freetrade.price.sell", Money.format(sell)));
         reply(s, buy < 0 ? Component.translatable("freetrade.price.buy_none")

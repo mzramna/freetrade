@@ -48,7 +48,10 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     protected void init() {
         super.init();
         int x = leftPos, y = topPos;
-        if (catalog == null) catalog = new CatalogWidget(font, 0, 0, 0, 0, true);
+        if (catalog == null) {
+            catalog = new CatalogWidget(font, 0, 0, 0, 0, true);
+            catalog.setOnSelect(e -> setQuantity(quantity));
+        }
         catalog.setBounds(x + RX, y + 50, 168, 84);
 
         search = addRenderableWidget(new EditBox(font, x + RX, y + 18, 168, 14,
@@ -66,13 +69,13 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
                         b -> catalog.setStockFilter(CatalogWidget.StockFilter.OUT_OF_STOCK))
                 .bounds(x + RX + 108, y + 34, 60, 12).build());
 
-        minus64 = addRenderableWidget(Button.builder(Component.literal("-64"), b -> setQuantity(quantity - 64))
+        minus64 = addRenderableWidget(Button.builder(Component.literal("-64"), b -> setQuantity(quantity - 64 * lot()))
                 .bounds(x + RX, y + 138, 30, 14).build());
-        minus1 = addRenderableWidget(Button.builder(Component.literal("-1"), b -> setQuantity(quantity - 1))
+        minus1 = addRenderableWidget(Button.builder(Component.literal("-1"), b -> setQuantity(quantity - lot()))
                 .bounds(x + RX + 32, y + 138, 26, 14).build());
-        plus1 = addRenderableWidget(Button.builder(Component.literal("+1"), b -> setQuantity(quantity + 1))
+        plus1 = addRenderableWidget(Button.builder(Component.literal("+1"), b -> setQuantity(quantity + lot()))
                 .bounds(x + RX + 100, y + 138, 26, 14).build());
-        plus64 = addRenderableWidget(Button.builder(Component.literal("+64"), b -> setQuantity(quantity + 64))
+        plus64 = addRenderableWidget(Button.builder(Component.literal("+64"), b -> setQuantity(quantity + 64 * lot()))
                 .bounds(x + RX + 128, y + 138, 40, 14).build());
 
         sellBtn = addRenderableWidget(Button.builder(Component.translatable("freetrade.gui.trader.sell"), b -> sell())
@@ -104,8 +107,19 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
         }
     }
 
+    /** Units per lot of the selected item (items worth less than 1 U.M. are only traded in lots). */
+    private int lot() {
+        Catalog.Entry sel = catalog.selected();
+        return sel == null ? 1 : (int) Math.max(1, Math.min(MAX_QTY, sel.lot()));
+    }
+
+    /** Snaps to a positive multiple of the lot. */
     private void setQuantity(int q) {
-        quantity = Math.max(1, Math.min(MAX_QTY, q));
+        int lot = lot();
+        int max = Math.max(lot, (MAX_QTY / lot) * lot);
+        int v = Math.max(lot, Math.min(max, q));
+        quantity = ((v + lot - 1) / lot) * lot;
+        if (quantity > max) quantity = max;
     }
 
     private void sell() {
@@ -205,7 +219,8 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
             if (sel.buy() < 0) {
                 g.drawString(font, Component.translatable("freetrade.gui.trader.out_of_stock"), x + RX + 20, y + 165, 0x8B0000, false);
             } else {
-                long cost = (long) Math.min(Long.MAX_VALUE / 2, (double) sel.buy() * quantity);
+                // estimate: price of one lot x lots (the server computes the real total, then rounds half-up)
+                long cost = (long) Math.min(Long.MAX_VALUE / 2, (double) sel.buy() * (quantity / Math.max(1, sel.lot())));
                 g.drawString(font, Component.translatable("freetrade.gui.trader.cost", Money.format(cost)),
                         x + RX + 20, y + 165, dark, false);
             }

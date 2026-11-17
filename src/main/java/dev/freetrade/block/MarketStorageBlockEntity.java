@@ -50,7 +50,7 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
     // Status codes shown in the GUI
     public static final int STATUS_IDLE = 0, STATUS_OK = 1, STATUS_NO_TARGET = 2, STATUS_NOT_TRADEABLE = 3,
             STATUS_TREASURY = 4, STATUS_NO_STOCK = 5, STATUS_NO_FUNDS = 6, STATUS_OFFLINE = 7, STATUS_FULL = 8,
-            STATUS_ERROR = 9, STATUS_WAITING_REDSTONE = 10;
+            STATUS_ERROR = 9, STATUS_WAITING_REDSTONE = 10, STATUS_LOT = 11;
 
     @Nullable protected UUID owner;
     protected String ownerName = "";
@@ -62,6 +62,7 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
     protected boolean powered;
     protected int status = STATUS_IDLE;
     protected long unitPrice;
+    protected long lot = 1;
     protected transient boolean pending;
     private int ticks;
 
@@ -262,6 +263,7 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
     protected void refreshPrice() {
         Market m = FreeTradeServer.market();
         unitPrice = m == null || target.isEmpty() ? 0 : Math.max(0, computeUnitPrice(m));
+        lot = m == null || target.isEmpty() ? 1 : Math.max(1, m.lotSize(target));
     }
 
     protected Market.TradeContext tradeContext(String source) {
@@ -274,7 +276,8 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
             case NOT_TRADEABLE -> STATUS_NOT_TRADEABLE;
             case TREASURY_EMPTY -> STATUS_TREASURY;
             case NO_STOCK -> STATUS_NO_STOCK;
-            case NO_FUNDS, TOO_FEW -> STATUS_NO_FUNDS;
+            case NO_FUNDS -> STATUS_NO_FUNDS;
+            case TOO_FEW -> STATUS_LOT;
             case DATABASE -> STATUS_ERROR;
         };
     }
@@ -335,7 +338,7 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
             if (i < 8) return part(capacity(), i - 4);
             if (i < 12) return part(balance, i - 8);
             if (i < 16) return part(unitPrice, i - 12);
-            if (i < 20) return part(0, i - 16);
+            if (i < 20) return part(lot, i - 16);
             return switch (i) {
                 case 20 -> currencyIndex;
                 case 21 -> (powered ? 1 : 0) | (pending ? 2 : 0) | (upgrades << 2);

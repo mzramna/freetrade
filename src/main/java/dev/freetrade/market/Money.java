@@ -29,6 +29,11 @@ public final class Money {
         return -Math.floorDiv(-milli, SCALE);
     }
 
+    /** Rounds to whole U.M. half-up: .5 and above goes up, below .5 goes down. Result in milli. */
+    public static long roundHalfUp(long milli) {
+        return Math.floorDiv(milli + SCALE / 2, SCALE) * SCALE;
+    }
+
     public static String format(long milli) {
         BigDecimal v = BigDecimal.valueOf(milli).divide(BigDecimal.valueOf(SCALE), 3, RoundingMode.DOWN)
                 .stripTrailingZeros();

@@ -92,8 +92,12 @@ public class FreeTradeGameTests {
 
         h.setBlock(REDSTONE, Blocks.REDSTONE_BLOCK);
         succeedEventually(h, () -> {
-            h.assertTrue(be.stored() == 0, "stored should drain while powered, is " + be.stored() + " (" + status(be) + ")");
-            h.assertTrue(be.balance() > 0, "balance should be paid after the sale, is " + be.balance() + " (" + status(be) + ")");
+            long lot = FreeTradeServer.market().lotSize("minecraft:cobblestone");
+            // cheap items sell in whole lots: what is left is less than one lot and waits for more
+            h.assertTrue(be.stored() < lot, "stored should drain to less than a lot (" + lot + ") while powered, is "
+                    + be.stored() + " (" + status(be) + ")");
+            h.assertTrue(be.balance() > 0 && be.balance() % 1000 == 0,
+                    "balance should be whole U.M. paid after the sale, is " + be.balance() + " (" + status(be) + ")");
         });
     }
 
