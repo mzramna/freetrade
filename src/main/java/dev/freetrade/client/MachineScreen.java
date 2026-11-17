@@ -135,7 +135,7 @@ public class MachineScreen<T extends MachineMenu> extends AbstractContainerScree
         g.drawString(font, Component.translatable("freetrade.gui.machine.input"), 8, 66, dark, false);
 
         boolean sellPoint = menu instanceof SellPointMenu;
-        line(g, Component.translatable("freetrade.gui.machine.stored", menu.stored(), menu.capacity()), 18, dark);
+        line(g, Component.translatable("freetrade.gui.machine.stored", compact(menu.stored()), compact(menu.capacity())), 18, dark);
         line(g, Component.translatable("freetrade.gui.machine.multiplier", menu.upgrades() + 1), 27, dark);
         Component price = menu.lot() > 1
                 ? Component.translatable(sellPoint ? "freetrade.gui.machine.pays_lot" : "freetrade.gui.machine.costs_lot",
@@ -150,9 +150,18 @@ public class MachineScreen<T extends MachineMenu> extends AbstractContainerScree
                 : status == MarketStorageBlockEntity.STATUS_OK ? 0x006400
                 : status == MarketStorageBlockEntity.STATUS_WAITING_REDSTONE ? 0x505050
                 : 0x8B0000;
-        g.drawString(font, Component.translatable("freetrade.gui.status." + statusKey(status)), 48, 58, statusColor, false);
+        // the status column ends at the money selector
+        g.drawString(font, font.plainSubstrByWidth(Component.translatable("freetrade.gui.status." + statusKey(status)).getString(),
+                MONEY_X - 50), 48, 58, statusColor, false);
         g.drawString(font, Component.translatable(menu.powered() ? "freetrade.gui.machine.redstone_on"
                 : "freetrade.gui.machine.redstone_off"), 48, 67, menu.powered() ? 0x006400 : 0x505050, false);
+    }
+
+    /** 10368 -> "10.3k", 2500000 -> "2.5M": keeps the numbers inside the narrow text column. */
+    static String compact(long n) {
+        if (n < 10_000) return Long.toString(n);
+        if (n < 1_000_000) return String.format(java.util.Locale.ROOT, "%.1fk", Math.floor(n / 100.0) / 10.0);
+        return String.format(java.util.Locale.ROOT, "%.1fM", Math.floor(n / 100_000.0) / 10.0);
     }
 
     private void line(GuiGraphics g, Component text, int y, int color) {
