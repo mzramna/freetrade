@@ -1,9 +1,13 @@
 package dev.freetrade.net;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
+import dev.freetrade.config.FreeTradeConfig;
 import dev.freetrade.db.MarketStore;
+import dev.freetrade.market.Money;
 import dev.freetrade.market.Market;
 import dev.freetrade.util.ItemKeys;
 import io.netty.buffer.ByteBuf;
@@ -27,21 +31,59 @@ public final class Catalog {
                 ByteBufCodecs.BOOL.decode(buf)));
     }
 
-    public record Header(double taxSell, double taxBuy, long treasury, boolean treasuryInfinite, String formula) {
+    /** Live settings of the running server, shown by the guide book (never the defaults). */
+    public record Header(double taxSell, double taxBuy, long treasury, boolean treasuryInfinite, String formula,
+                         Map<String, String> config) {
         public static final StreamCodec<ByteBuf, Header> CODEC = StreamCodec.composite(
                 ByteBufCodecs.DOUBLE, Header::taxSell,
                 ByteBufCodecs.DOUBLE, Header::taxBuy,
                 ByteBufCodecs.VAR_LONG, Header::treasury,
                 ByteBufCodecs.BOOL, Header::treasuryInfinite,
                 ByteBufCodecs.STRING_UTF8, Header::formula,
+                ByteBufCodecs.map(HashMap::new, ByteBufCodecs.STRING_UTF8, ByteBufCodecs.STRING_UTF8), Header::config,
                 Header::new);
+
+        public String get(String key) {
+            return config.getOrDefault(key, "?");
+        }
     }
 
     private Catalog() {}
 
     public static Header header(Market m) {
-        return new Header(m.settings().taxSellPercent(), m.settings().taxBuyPercent(), m.account(MarketStore.TREASURY),
-                m.treasuryInfinite(), m.engine().params().expression().source());
+        Map<String, String> c = new HashMap<>();
+        var st = m.settings();
+        var p = m.engine().params();
+        c.put("formula", p.expression().source());
+        c.put("ceiling", p.ceilingUm() < 0 ? "-1" : Money.format(Money.ofDouble(p.ceilingUm())));
+        c.put("min_unit", Money.format(Money.ofDouble(p.minUnitUm())));
+        c.put("reference", Long.toString(st.defaultReference()));
+        c.put("initial_stock", FreeTradeConfig.initialStock.name());
+        c.put("dynamic", Boolean.toString(st.dynamicPropagation()));
+        c.put("labor", pct(st.laborPercent()));
+        c.put("damaged", Boolean.toString(FreeTradeConfig.damagedItems));
+        c.put("tax_sell", pct(st.taxSellPercent()));
+        c.put("tax_buy", pct(st.taxBuyPercent()));
+        c.put("treasury_infinite", Boolean.toString(m.treasuryInfinite()));
+        c.put("treasury", Money.format(m.account(MarketStore.TREASURY)));
+        var b = st.backoff();
+        c.put("backoff_enabled", Boolean.toString(b.enabled()));
+        c.put("backoff_threshold", Integer.toString(b.threshold()));
+        c.put("backoff_window", Long.toString(b.windowMs() / 1000));
+        c.put("backoff_percent", pct(b.percentPerLevel()));
+        c.put("backoff_max", Integer.toString(b.maxLevel()));
+        c.put("machine_interval", String.format(java.util.Locale.ROOT, "%.2f", FreeTradeConfig.machineIntervalTicks / 20.0));
+        c.put("machine_batch", Integer.toString(FreeTradeConfig.machineBatch));
+        c.put("villager_stacks", Integer.toString(Math.min(27, FreeTradeConfig.villagerMaxStacks)));
+        c.put("database", FreeTradeConfig.dbType.name());
+        return new Header(st.taxSellPercent(), st.taxBuyPercent(), m.account(MarketStore.TREASURY), m.treasuryInfinite(),
+                p.expression().source(), c);
+    }
+
+    private static String pct(double v) {
+        String s = String.format(java.util.Locale.ROOT, "%.2f", v);
+        s = s.replaceAll("0+$", "").replaceAll("\\.$", "");
+        return s + "%";
     }
 
     public static List<Entry> build(Market m) {
@@ -49,6 +91,7 @@ public final class Catalog {
         var snap = m.snapshot();
         List<String> ids = new ArrayList<>(snap.declared().keySet());
         ids.addAll(snap.derived().keySet());
+        for (String id : m.forcedPrices().keySet()) if (!ids.contains(id)) ids.add(id);
         for (String id : ids) {
             if (!m.isTradeable(id) || ItemKeys.item(id) == Items.AIR) continue;
             long stock = m.stock(id);

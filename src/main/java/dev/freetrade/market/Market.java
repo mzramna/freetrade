@@ -55,6 +55,8 @@ public final class Market {
     private final Map<String, Long> stock = new ConcurrentHashMap<>();
     private final Map<String, Long> accounts = new ConcurrentHashMap<>();
     private final Map<String, Double> unitMemo = new ConcurrentHashMap<>();
+    /** Admin-forced unit prices (U.M.): they replace the formula for that item. Shared through the database. */
+    private final Map<String, Double> overrides = new ConcurrentHashMap<>();
     private final ThreadLocal<Set<String>> visiting = ThreadLocal.withInitial(HashSet::new);
     private final CopyOnWriteArrayList<Consumer<Market>> listeners = new CopyOnWriteArrayList<>();
 
@@ -110,6 +112,9 @@ public final class Market {
     public void reloadCaches() throws SQLException {
         Map<String, Long> s = db.call(store::loadStock);
         Map<String, Long> a = db.call(store::loadAccounts);
+        Map<String, Double> o = db.call(store::loadOverrides);
+        overrides.clear();
+        overrides.putAll(o);
         stock.clear();
         stock.putAll(s);
         accounts.clear();
@@ -122,6 +127,9 @@ public final class Market {
         return db.submit(c -> {
             Map<String, Long> s = store.loadStock(c);
             Map<String, Long> a = store.loadAccounts(c);
+            Map<String, Double> o = store.loadOverrides(c);
+            overrides.keySet().retainAll(o.keySet());
+            overrides.putAll(o);
             stock.putAll(s);
             accounts.putAll(a);
             changed();
@@ -151,7 +159,8 @@ public final class Market {
 
     public boolean isTradeable(String item) {
         Snapshot s = snapshot;
-        return !s.currency().contains(item) && (s.declared().containsKey(item) || s.derived().containsKey(item));
+        return !s.currency().contains(item)
+                && (s.declared().containsKey(item) || s.derived().containsKey(item) || overrides.containsKey(item));
     }
 
     public long stock(String item) {
@@ -205,6 +214,8 @@ public final class Market {
 
     /** Current market value of one unit (at the current stock level). */
     public double unitPrice(String item) {
+        Double forced = overrides.get(item);
+        if (forced != null) return forced;
         Double m = unitMemo.get(item);
         if (m != null) return m;
         double b = baseValue(item);
@@ -234,9 +245,49 @@ public final class Market {
         return lot <= 1 ? n : ((n + lot - 1) / lot) * lot;
     }
 
+    // ------------------------------------------------------------------ forced prices
+
+    /** Forced unit price of an item (U.M.), or null when the formula applies. */
+    public Double forcedPrice(String item) {
+        return overrides.get(item);
+    }
+
+    public Map<String, Double> forcedPrices() {
+        return java.util.Collections.unmodifiableMap(overrides);
+    }
+
+    /** Sets (price > 0) or clears (price <= 0) a forced unit price. */
+    public CompletableFuture<Double> forcePrice(String item, double price) {
+        return db.submit(c -> {
+            if (price > 0) store.setOverride(c, item, price);
+            else store.deleteOverride(c, item);
+            return price;
+        }).thenApply(v -> {
+            if (v > 0) overrides.put(item, v);
+            else overrides.remove(item);
+            changed();
+            return v;
+        });
+    }
+
+    /** Milli the association pays for n units starting at stock s (formula, or the forced price). */
+    private long sellSum(String item, double b, double r, long s, long n) {
+        Double forced = overrides.get(item);
+        if (forced != null) return (long) Math.floor(forced * n * Money.SCALE);
+        return engine.sellValue(b, r, s, n);
+    }
+
+    /** Milli charged for n units taken from stock s (formula, or the forced price); -1 if not enough stock. */
+    private long buySum(String item, double b, double r, long s, long n) {
+        if (n > s) return -1;
+        Double forced = overrides.get(item);
+        if (forced != null) return (long) Math.ceil(forced * n * Money.SCALE);
+        return engine.buyCost(b, r, s, n);
+    }
+
     /** Real (unrounded) milli the association would pay for n units, after tax and durability, before backoff. */
     private long realSellNet(String item, long n, double factor) {
-        long gross = (long) (engine.sellValue(baseValue(item), reference(item), stock(item), n) * factor);
+        long gross = (long) (sellSum(item, baseValue(item), reference(item), stock(item), n) * factor);
         return gross - taxOf(gross, settings.taxSellPercent());
     }
 
@@ -258,7 +309,7 @@ public final class Market {
     public long quoteBuy(String item, long n, double backoffMultiplier) {
         if (!isTradeable(item)) return -1;
         long units = ceilToLot(n, lotSize(item));
-        long cost = PricingEngine.applyMultiplier(engine.buyCost(baseValue(item), reference(item), stock(item), units),
+        long cost = PricingEngine.applyMultiplier(buySum(item, baseValue(item), reference(item), stock(item), units),
                 backoffMultiplier);
         if (cost < 0) return -1;
         return Money.roundHalfUp(cost + taxOf(cost, settings.taxBuyPercent()));
@@ -310,12 +361,12 @@ public final class Market {
             }
             long units = floorToLot(offered, lot);
             if (units <= 0) return new SellResult(Error.TOO_FEW, 0, 0, 0, s);
-            long[] parts = sellParts(b, r, s, units, factor, penalty, st.taxSellPercent());
+            long[] parts = sellParts(item, b, r, s, units, factor, penalty, st.taxSellPercent());
             if (st.treasuryInitialUm() >= 0) {
                 long treasury = store.lockAccount(c, MarketStore.TREASURY);
                 while (units > 0 && parts[0] + parts[1] > treasury) {
                     units -= lot;
-                    parts = units > 0 ? sellParts(b, r, s, units, factor, penalty, st.taxSellPercent()) : parts;
+                    parts = units > 0 ? sellParts(item, b, r, s, units, factor, penalty, st.taxSellPercent()) : parts;
                 }
                 if (units <= 0) return new SellResult(Error.TREASURY_EMPTY, 0, 0, 0, s);
             }
@@ -343,16 +394,17 @@ public final class Market {
     }
 
     /** {rounded net payout, tax, real net} in milli. */
-    private long[] sellParts(double b, double r, long s, long units, double factor, double penalty, double taxPercent) {
-        long gross = (long) (engine.sellValue(b, r, s, units) * factor / penalty);
+    private long[] sellParts(String item, double b, double r, long s, long units, double factor, double penalty,
+                             double taxPercent) {
+        long gross = (long) (sellSum(item, b, r, s, units) * factor / penalty);
         long tax = taxOf(gross, taxPercent);
         long netReal = gross - tax;
         return new long[]{Money.roundHalfUp(netReal), tax, netReal};
     }
 
     /** {rounded total, tax, real total} in milli, or null when there is not enough stock. */
-    private long[] buyParts(double b, double r, long s, long units, double mult, double taxPercent) {
-        long cost = PricingEngine.applyMultiplier(engine.buyCost(b, r, s, units), mult);
+    private long[] buyParts(String item, double b, double r, long s, long units, double mult, double taxPercent) {
+        long cost = PricingEngine.applyMultiplier(buySum(item, b, r, s, units), mult);
         if (cost < 0) return null;
         long tax = taxOf(cost, taxPercent);
         long real = cost + tax;
@@ -386,7 +438,7 @@ public final class Market {
             if (exact) {
                 n = ceilToLot(units, lot);
                 if (n > s) return new BuyResult(Error.NO_STOCK, 0, 0, 0, s);
-                parts = buyParts(b, r, s, n, mult, st.taxBuyPercent());
+                parts = buyParts(item, b, r, s, n, mult, st.taxBuyPercent());
                 if (parts == null) return new BuyResult(Error.NO_STOCK, 0, 0, 0, s);
                 if (parts[0] > budgetMilli) return new BuyResult(Error.NO_FUNDS, 0, parts[0], 0, s);
             } else {
@@ -395,13 +447,13 @@ public final class Market {
                 long lo = 0, hi = max / Math.max(1, lot);
                 while (lo < hi) {
                     long mid = (lo + hi + 1) >>> 1;
-                    long[] p = buyParts(b, r, s, mid * lot, mult, st.taxBuyPercent());
+                    long[] p = buyParts(item, b, r, s, mid * lot, mult, st.taxBuyPercent());
                     if (p != null && p[0] <= budgetMilli) lo = mid;
                     else hi = mid - 1;
                 }
                 n = lo * lot;
                 if (n <= 0) return new BuyResult(Error.NO_FUNDS, 0, 0, 0, s);
-                parts = buyParts(b, r, s, n, mult, st.taxBuyPercent());
+                parts = buyParts(item, b, r, s, n, mult, st.taxBuyPercent());
             }
             long total = parts[0], tax = parts[1], real = parts[2];
             long after = store.addStock(c, item, -n);
@@ -423,6 +475,20 @@ public final class Market {
             }
             return res;
         }).exceptionally(t -> new BuyResult(Error.DATABASE, 0, 0, 0, stock(item)));
+    }
+
+    /** Admin: add (delta > 0) or remove (delta < 0) stock atomically; never below zero. Returns the new stock. */
+    public CompletableFuture<Long> adjustStock(String item, long delta) {
+        return db.submit(c -> {
+            long cur = store.lockStock(c, item, stock(item));
+            long next = Math.max(0, cur + delta);
+            store.setStock(c, item, next);
+            return next;
+        }).thenApply(v -> {
+            stock.put(item, v);
+            changed();
+            return v;
+        });
     }
 
     /** Admin: set stock. */

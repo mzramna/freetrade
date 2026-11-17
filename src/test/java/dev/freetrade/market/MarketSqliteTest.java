@@ -157,6 +157,32 @@ class MarketSqliteTest {
     }
 
     @Test
+    void forcedPriceAndStockAdjust() throws Exception {
+        Market m = market(-1, 0);
+        // forced price replaces the formula, also for an item that had no value at all
+        assertFalse(m.isTradeable("mystery"));
+        m.forcePrice("mystery", 2.5).get();
+        assertTrue(m.isTradeable("mystery"));
+        m.adjustStock("mystery", 10).get();
+        assertEquals(10, m.stock("mystery"));
+        assertEquals(Money.ofUnits(8), m.quoteBuy("mystery", 3, 1.0), "3 x 2.5 = 7.5 -> 8, no slippage");
+        // a forced price below 1 U.M. trades in lots
+        m.forcePrice("oak_log", 0.25).get();
+        assertEquals(4, m.lotSize("oak_log"));
+        // clearing goes back to the formula
+        m.forcePrice("oak_log", 0).get();
+        assertNull(m.forcedPrice("oak_log"));
+        assertEquals(1, m.lotSize("oak_log"));
+        // stock can be removed but never goes below zero
+        assertEquals(0L, m.adjustStock("mystery", -50).get());
+        // forced prices are stored in the database
+        db.close();
+        db = Database.sqlite(dir.resolve("t.db").toString());
+        Market again = market(-1, 0);
+        assertEquals(2.5, again.forcedPrice("mystery"), 1e-9);
+    }
+
+    @Test
     void stockSurvivesReopen() throws Exception {
         Market m = market(-1, 0);
         m.sell(CTX, "oak_log", 5, 1.0).get();

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import dev.freetrade.FreeTrade;
+import dev.freetrade.config.FreeTradeConfig;
 import dev.freetrade.currency.Currency;
 import dev.freetrade.market.Market;
 import dev.freetrade.menu.MachineMenu;
@@ -169,6 +170,10 @@ public final class FreeTradeNetwork {
             player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("freetrade.error.offline"));
             return;
         }
-        send(player, new CatalogPayload(openGuide, Catalog.header(m), Catalog.build(m)));
+        Catalog.Header header = Catalog.header(m);
+        // the book's catalog can be hidden from regular players by the server admin (OPs always see it)
+        boolean hidden = openGuide && !FreeTradeConfig.guideShowCatalog && !player.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
+        header.config().put("catalog_hidden", Boolean.toString(hidden));
+        send(player, new CatalogPayload(openGuide, header, hidden ? List.of() : Catalog.build(m)));
     }
 }

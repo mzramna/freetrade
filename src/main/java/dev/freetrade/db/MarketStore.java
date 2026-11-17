@@ -45,6 +45,8 @@ public final class MarketStore {
             s.execute("CREATE TABLE IF NOT EXISTS ft_backoff (player VARCHAR(64) NOT NULL, item VARCHAR(255) NOT NULL, "
                     + "last_sell BIGINT NOT NULL, last_rt BIGINT NOT NULL, round_trips INT NOT NULL, lvl INT NOT NULL, "
                     + "PRIMARY KEY (player, item))");
+            s.execute("CREATE TABLE IF NOT EXISTS ft_price_overrides (item VARCHAR(255) PRIMARY KEY, "
+                    + "price DOUBLE PRECISION NOT NULL)");
             s.execute("CREATE TABLE IF NOT EXISTS ft_triggers (id VARCHAR(64) PRIMARY KEY, account VARCHAR(64) NOT NULL, "
                     + "op VARCHAR(2) NOT NULL, threshold BIGINT NOT NULL, cost BIGINT NOT NULL, mode VARCHAR(8) NOT NULL, "
                     + "cooldown_ms BIGINT NOT NULL, command TEXT NOT NULL, fired INT NOT NULL, last_fired BIGINT NOT NULL, "
@@ -159,6 +161,32 @@ public final class MarketStore {
                 if (++n % 500 == 0) ps.executeBatch();
             }
             ps.executeBatch();
+        }
+    }
+
+    // ---------------------------------------------------------------- forced prices
+
+    public Map<String, Double> loadOverrides(Connection c) throws SQLException {
+        Map<String, Double> out = new HashMap<>();
+        try (Statement s = c.createStatement(); ResultSet rs = s.executeQuery("SELECT item, price FROM ft_price_overrides")) {
+            while (rs.next()) out.put(rs.getString(1), rs.getDouble(2));
+        }
+        return out;
+    }
+
+    public void setOverride(Connection c, String item, double price) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO ft_price_overrides (item, price) VALUES (?, ?) "
+                + "ON CONFLICT (item) DO UPDATE SET price = excluded.price")) {
+            ps.setString(1, item);
+            ps.setDouble(2, price);
+            ps.executeUpdate();
+        }
+    }
+
+    public boolean deleteOverride(Connection c, String item) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("DELETE FROM ft_price_overrides WHERE item = ?")) {
+            ps.setString(1, item);
+            return ps.executeUpdate() > 0;
         }
     }
 

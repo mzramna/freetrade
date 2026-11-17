@@ -67,6 +67,26 @@ public final class FreeTradeCommand {
                         .then(Commands.argument("item", ItemArgument.item(ctx))
                                 .then(Commands.argument("amount", LongArgumentType.longArg(0))
                                         .executes(FreeTradeCommand::setStock))))
+                .then(Commands.literal("stock").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("item", ItemArgument.item(ctx))
+                                .executes(FreeTradeCommand::showStock)
+                                .then(Commands.literal("set").then(Commands.argument("amount", LongArgumentType.longArg(0))
+                                        .executes(c -> changeStock(c, 0))))
+                                .then(Commands.literal("add").then(Commands.argument("amount", LongArgumentType.longArg(1))
+                                        .executes(c -> changeStock(c, 1))))
+                                .then(Commands.literal("remove").then(Commands.argument("amount", LongArgumentType.longArg(1))
+                                        .executes(c -> changeStock(c, -1))))))
+                .then(Commands.literal("forceprice").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.literal("list").executes(FreeTradeCommand::forcedList))
+                        .then(Commands.argument("item", ItemArgument.item(ctx))
+                                .executes(FreeTradeCommand::showForced)
+                                .then(Commands.literal("set").then(Commands.argument("value", DoubleArgumentType.doubleArg(0.001))
+                                        .executes(c -> forcePrice(c, 0))))
+                                .then(Commands.literal("add").then(Commands.argument("value", DoubleArgumentType.doubleArg(0.001))
+                                        .executes(c -> forcePrice(c, 1))))
+                                .then(Commands.literal("remove").then(Commands.argument("value", DoubleArgumentType.doubleArg(0.001))
+                                        .executes(c -> forcePrice(c, -1))))
+                                .then(Commands.literal("clear").executes(FreeTradeCommand::clearForced))))
                 .then(Commands.literal("setvalue").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("item", ItemArgument.item(ctx))
                                 .then(Commands.argument("value", DoubleArgumentType.doubleArg(0))
@@ -175,6 +195,83 @@ public final class FreeTradeCommand {
         later(c.getSource(), m.setStock(ItemKeys.id(item), amount),
                 v -> Component.translatable("freetrade.setstock.done", item.getDefaultInstance().getHoverName(), v));
         return 1;
+    }
+
+    private static Item itemArg(CommandContext<CommandSourceStack> c) {
+        return ItemArgument.getItem(c, "item").item().value();
+    }
+
+    private static int showStock(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        long v = m.stock(ItemKeys.id(item));
+        reply(c.getSource(), Component.translatable("freetrade.stock.show", item.getDefaultInstance().getHoverName(), v));
+        return (int) Math.min(Integer.MAX_VALUE, v);
+    }
+
+    /** mode 0 = set, 1 = add, -1 = remove. */
+    private static int changeStock(CommandContext<CommandSourceStack> c, int mode) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        if (Currency.isCurrency(item)) {
+            c.getSource().sendFailure(Component.translatable("freetrade.price.currency", item.getDefaultInstance().getHoverName(),
+                    Money.format(Currency.valueOf(item))));
+            return 0;
+        }
+        long amount = LongArgumentType.getLong(c, "amount");
+        String id = ItemKeys.id(item);
+        CompletableFuture<Long> f = mode == 0 ? m.setStock(id, amount) : m.adjustStock(id, mode * amount);
+        later(c.getSource(), f, v -> Component.translatable("freetrade.setstock.done", item.getDefaultInstance().getHoverName(), v));
+        return 1;
+    }
+
+    private static int showForced(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        Double v = m.forcedPrice(ItemKeys.id(item));
+        reply(c.getSource(), v == null
+                ? Component.translatable("freetrade.forceprice.none", item.getDefaultInstance().getHoverName())
+                : Component.translatable("freetrade.forceprice.show", item.getDefaultInstance().getHoverName(), Money.format(Money.ofDouble(v))));
+        return v == null ? 0 : 1;
+    }
+
+    /** mode 0 = set, 1 = add, -1 = remove (relative to the forced price, or to the current market price). */
+    private static int forcePrice(CommandContext<CommandSourceStack> c, int mode) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        if (Currency.isCurrency(item)) {
+            c.getSource().sendFailure(Component.translatable("freetrade.price.currency", item.getDefaultInstance().getHoverName(),
+                    Money.format(Currency.valueOf(item))));
+            return 0;
+        }
+        String id = ItemKeys.id(item);
+        double value = DoubleArgumentType.getDouble(c, "value");
+        Double forced = m.forcedPrice(id);
+        double current = forced != null ? forced : (m.isTradeable(id) ? m.unitPrice(id) : 0);
+        double next = mode == 0 ? value : current + mode * value;
+        if (next <= 0) {
+            c.getSource().sendFailure(Component.translatable("freetrade.forceprice.not_positive"));
+            return 0;
+        }
+        later(c.getSource(), m.forcePrice(id, next), v -> Component.translatable("freetrade.forceprice.show",
+                item.getDefaultInstance().getHoverName(), Money.format(Money.ofDouble(v))));
+        return 1;
+    }
+
+    private static int clearForced(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        Market m = market(c);
+        Item item = itemArg(c);
+        later(c.getSource(), m.forcePrice(ItemKeys.id(item), 0),
+                v -> Component.translatable("freetrade.forceprice.cleared", item.getDefaultInstance().getHoverName()));
+        return 1;
+    }
+
+    private static int forcedList(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        Market m = market(c);
+        var all = new java.util.TreeMap<>(m.forcedPrices());
+        if (all.isEmpty()) reply(c.getSource(), Component.translatable("freetrade.forceprice.list_empty"));
+        all.forEach((id, v) -> reply(c.getSource(), Component.literal(" - " + id + " = " + Money.format(Money.ofDouble(v)) + " U.M.")));
+        return all.size();
     }
 
     private static int setValue(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
