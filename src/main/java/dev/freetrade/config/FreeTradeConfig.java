@@ -152,7 +152,8 @@ public final class FreeTradeConfig {
         BACKOFF_MAX = b.defineInRange("backoff_max_level", 20, 1, 1000);
         TREASURY_INITIAL = b.comment(
                         "Money the association starts with (U.M.). -1 = infinite: it always pays.",
-                        "When finite, sales refill it and purchases drain it; without money it stops buying.")
+                        "When finite, the association pays for what players sell out of it, and what players buy refills it.",
+                        "With an empty treasury it stops buying from players (selling to players always works).")
                 .defineInRange("treasury_initial", -1L, -1L, Long.MAX_VALUE / 1000);
         b.pop();
 
@@ -162,7 +163,7 @@ public final class FreeTradeConfig {
         MACHINE_BATCH = b.comment("Most units a machine trades per operation.")
                 .defineInRange("batch_size", 64, 1, 100000);
         VILLAGER_MAX_STACKS = b.comment("Stacks of one item a player can put in the trade representative's sell slot.")
-                .defineInRange("villager_max_stacks", 27, 1, 1000);
+                .defineInRange("villager_max_stacks", 27, 1, 27);
         b.pop();
 
         b.push("database");

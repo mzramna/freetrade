@@ -4,150 +4,86 @@
 
 **English** | [Português (Brasil)](README.pt-BR.md)
 
-A NeoForge economy mod for modpacks and servers. A global **Trade Association** keeps the stock of every item,
-and prices follow supply: the more stock, the lower the price. Items with no declared value get one derived from
-their recipes, so modded items are priced automatically.
+A NeoForge economy mod for modpacks and servers. A global **Trade Association** keeps the stock of every item, and
+prices follow supply: the more stock, the lower the price. Items with no declared value get one derived from their
+recipes, so modded items are priced automatically.
 
 ## Downloads
-Grab the jar for your Minecraft version from [Releases](https://github.com/mzramna/freetrade/releases/latest):
 
-| Jar                           | Minecraft | NeoForge | Packs |
-|-------------------------------|-----------|----------|-------|
-| `freetrade-1.21.1-<ver>.jar`  | 1.21.1    | 21.1.x   | ATM10 family |
-| `freetrade-26.1.2-<ver>.jar`  | 26.1.2    | 26.1.x   | ATM11 |
+Get the jar from [Releases](https://github.com/mzramna/freetrade/releases/latest):
 
-Install it on **both server and clients**. All servers using the same economy must run the same modpack.
+| Jar                          | Minecraft | NeoForge | Notes |
+|------------------------------|-----------|----------|-------|
+| `freetrade-1.21.1-<ver>.jar` | 1.21.1    | 21.1.x   | Java 21 |
 
-## Concepts
-- **Trade Association:** the server-wide market. Stock and prices are stored in the database.
-- **U.M. (unidade monetária):** the currency. By default 1 emerald = 1 U.M. and 1 emerald block = 9 U.M.
-  Money items are set by `currency_items`. Lightman's Currency coins and bank accounts work too when that mod is installed.
-- **Price formula:** `y = b * (r / x)^1`, where `x` is the current stock, `b` the base value and `r` the reference stock.
-  Lower stock means higher price. The default `b * (r / x)^1` has no ceiling (`max_price = -1`).
-  The formula is configurable, and each item can override `r`.
-- **Slippage:** large trades are priced unit by unit, so the price moves during the transaction.
-- **Whole U.M. lots:** every payment is a whole number of U.M., rounded in the association's favor.
-  Cheap items are traded in lots, e.g. 2 sticks = 1 U.M.
-- **Initial stock** starts at the reference stock `r`, so the first seller does not get the maximum price.
+A build for Minecraft 26.1 (NeoForge 26.1.x, Java 25) is planned and will be listed here when it is released.
 
-## Recipe-derived values
-Items without a declared value get one from the cheapest recipe that makes them: crafting, smelting, stonecutting,
-smithing and machines from mods (energy and fluids are ignored). Labor cost is a percentage (default 0%).
-Values are computed on first start or with `/freetrade recalc`, and are then saved to the database.
+Install it on **both the server and the clients**. Every server that shares an economy must run the same modpack.
 
-Prices **propagate**: a base value is the current price of the ingredients divided by the recipe yield, and then
-the formula applies the item's own stock. Selling many logs makes planks and sticks cheaper too. Items declared
-in the config use their own value and do not inherit from ingredients. Items that have no recipe and no value
-stay out of the market and show up in `/freetrade unpriced`.
+## Features
 
-## Values file
-`config/freetrade/values.json` holds base values, reference stock and initial stock per item.
+- **Supply-based prices.** Each item has a base value and a formula that moves its price with stock. The default
+  formula is `b * (r / x)^1`, and the server can change it, add a ceiling, or use a steeper curve.
+- **Values from recipes.** Items without a declared value get one from the cheapest recipe that makes them, and the
+  price follows its ingredients.
+- **Slippage.** Large trades are priced unit by unit, so the price moves while you trade.
+- **Whole-U.M. sales to the Trade Representative.** Only the units that earn whole U.M. are taken, and the rest is
+  returned.
+- **Trade Representative.** An unemployed villager becomes a representative at an Auto Buyer. Sell one item type or
+  buy from the catalog in its window.
+- **Sell Point and Auto Buyer.** Machines that sell an item on a redstone signal, and buy an item from money you put
+  in them. They have capacity that grows with adjacent chests and barrels.
+- **Trade Association Guide.** A book with a "How it works" tour and a searchable catalog of buy and sell prices, stock
+  and a stock filter.
+- **Taxes, backoff and treasury.** Optional sell and buy taxes into an operator account, an anti-storage backoff for
+  round trips, and an optional finite treasury.
+- **Money.** Emeralds and emerald blocks by default, any items the server chooses, and Lightman's Currency coins and
+  bank accounts when that mod is installed.
+- **Database.** SQLite for a single world, or PostgreSQL, which several servers can share as one economy.
+- **Triggers.** Commands that run when the treasury or tax account reaches a condition, optionally spending money
+  first. Operators set them up; see the [command reference](docs/en/commands.md#triggers) for the syntax.
 
-```jsonc
-{
-  "values": { "minecraft:diamond": 16, "#minecraft:logs": 4 },   // item id or #tag
-  "reference_stock": { "minecraft:cobblestone": 4096 },          // r override per item
-  "initial_stock": { "minecraft:iron_ingot": 256 },              // starting stock
-  "excluded": ["minecraft:bedrock", "#c:ores/netherite"]          // never traded
-}
-```
+## Quick start
 
-## Trade Representative (villager)
-An unemployed villager becomes a **Trade Representative** when it finds an **Auto Buyer** block (its workstation).
-- **Sell:** a grid with one item type at a time. Put in any number of stacks of the same item and see the value.
-- **Buy:** choose an item from the searchable catalog, set the quantity, pay with money items, and receive change
-  in the largest denominations possible.
+**Players.** Craft a **Trade Association Guide** from a book and an emerald, and right-click it to read the market.
+To trade, place an **Auto Buyer** near an unemployed villager, then right-click the new Trade Representative.
+The [player guide](docs/en/player-guide.md) covers selling, buying, the Sell Point and the Auto Buyer.
 
-## Sell Point
-A block that keeps one item, chosen with a ghost slot (drag from JEI, EMI or REI).
-- Capacity: 54 stacks x (1 + number of adjacent chests/barrels), with up to 5 barrels. The upgrade is virtual: if a
-  barrel is removed, the block stops accepting items until the stock fits again.
-- With a **redstone signal**, it sells its contents to the association.
-- Its GUI shows the stored amount, the item, the price per unit, the balance, and money arrows (↑/↓) to withdraw.
-- Money items inserted into it become balance, so it works as a change machine. They are not sold as goods.
-- A hopper or other automation can only take the selected money item, with redstone on and enough balance.
+**Server owners and modpack makers.** Install the jar on the server and on every client. Set the settings in
+`serverconfig/freetrade-server.toml` (or `defaultconfigs/` in a modpack), and declare item values in
+`config/freetrade/values.json`. After adding mods, run `/freetrade recalc`. The
+[server and modpack guide](docs/en/server-modpack-guide.md) explains the database choice, sharing an economy, and
+backups.
 
-## Auto Buyer
-A block with a ghost slot for the **target item**. Money items inserted into it become balance, and it buys the
-target while there is balance, stock in the association and space. Its capacity works like the Sell Point.
-Automation only extracts bought items while redstone is on. Only the owner and OPs can open its GUI.
+## Documentation
 
-## Trade Guide
-Crafted with a book and an emerald. Right-click it to open a two-tab screen:
-1. **How it works:** pages about the formula, U.M., villagers, blocks, tax, backoff and treasury.
-2. **Catalog:** searchable by name or id, with sell and buy price per unit, lot size for 1 U.M., stock,
-   and a filter for all / in stock / out of stock.
+- [Player guide](docs/en/player-guide.md): how to trade, and how the market works.
+- [Server and modpack guide](docs/en/server-modpack-guide.md): install, databases, shared economies, modpack seeding,
+  economy settings and troubleshooting.
+- [Configuration reference](docs/en/configuration.md): every server setting, the `values.json` format, and the price
+  formula language.
+- [Command reference](docs/en/commands.md): every `/freetrade` command, with permissions and examples.
+- [Regional markets](docs/regions.md): a design note for a future version. It is not implemented.
 
-## Tax, backoff and treasury
-- `tax_on_sell_percent` and `tax_on_buy_percent` send a share of each transaction to the OP **tax account**
-  (`/freetrade taxaccount`).
-- **Anti-storage backoff:** if a player sells and buys back the same item too many times in a short period, the
-  buy-back costs `backoff_percent` more per level. The level decays over time and is tracked per player and item.
-- **Treasury:** the association's money. The default `-1` means infinite.
+## Translations
 
-## Database
-- **SQLite** (default): a file in the world folder. Good for single-player and small servers.
-- **Postgres** (recommended for servers): can be **shared by several servers**, so they form one economy.
-  Each transaction is atomic in the database, and the history records a `server_id`.
-
-## Commands
-Alias: `/ft`. Operators (level 2) for admin commands.
-
-| Command | Description |
-|---------|-------------|
-| `/freetrade price [item]` | Price and stock of an item (the held item by default). |
-| `/freetrade recalc` | Recalculate derived values from recipes. |
-| `/freetrade reload` | Reload the configuration. |
-| `/freetrade setstock <item> <n>` | Set the stock of an item. |
-| `/freetrade setvalue <item> <v>` | Set the base value of an item (run `recalc` to propagate). |
-| `/freetrade unpriced [page]` | List items with no price. |
-| `/freetrade history [item]` | Recent transactions. |
-| `/freetrade account <treasury\|tax> balance` | Show the balance. |
-| `/freetrade account <treasury\|tax> query [op value]` | Balance, or 1/0 when compared to a value. |
-| `/freetrade account <treasury\|tax> deposit` | Deposit the money items held in hand. |
-| `/freetrade account <treasury\|tax> withdraw <amount> [item]` | Withdraw U.M. as money items. |
-| `/freetrade account <treasury\|tax> remove` | Remove the account's money items from the player. |
-| `/freetrade account <treasury\|tax> give <player> <amount>` | Give U.M. from the account to a player. |
-| `/freetrade trigger add <id> <account> <op> <value> <once\|repeat> run <command>` | Register a trigger. |
-| `/freetrade trigger add <id> <account> <op> <value> <mode> <cost> <cooldownSeconds> <command>` | Trigger with a cost and cooldown. |
-| `/freetrade trigger list \| remove <id> \| reset <id> \| enable <id> \| disable <id>` | Manage triggers. |
-
-`treasury ...` and `taxaccount ...` are aliases for `account treasury ...` and `account tax ...`.
-
-Trigger placeholders in the command: `{id}`, `{account}`, `{balance}`, `{cost}`, `{count}`.
-
-### Command block examples
-- A comparator on `/freetrade account query treasury >= 1000` gives a signal when the treasury has at least 1000 U.M.
-- `/freetrade trigger add rich treasury >= 1000 repeat run say Treasury is full: {balance} U.M.` announces every time
-  the treasury crosses 1000 going up.
-- `/freetrade trigger add bonus treasury >= 500 once 100 0 run give @a minecraft:diamond` runs once, and spends 100 U.M.
-  from the treasury when it fires.
-
-## Configuration
-- Server config: `serverconfig/freetrade-server.toml` in the world (or `defaultconfigs/` in a modpack). It holds the
-  formula, tax, database, backoff and treasury settings.
-- Values: `config/freetrade/values.json` (see above).
-
-## More documentation
-- Player guide: [docs/en/player-guide.md](docs/en/player-guide.md)
-- Server and modpack guide: [docs/en/server-modpack-guide.md](docs/en/server-modpack-guide.md)
-- Commands: [docs/en/commands.md](docs/en/commands.md)
-- Configuration: [docs/en/configuration.md](docs/en/configuration.md)
-- Future regional markets (design note, not implemented): [docs/regions.md](docs/regions.md)
+Free Trade is available in English and Brazilian Portuguese. To add a language, the game text and the documentation
+can both be translated. See [TRANSLATING.md](TRANSLATING.md).
 
 ## Building
+
 | Branch   | Java |
 |----------|------|
 | `1.21.1` | 21   |
-| `26.1`   | 25   |
 
 ```bash
 ./gradlew build              # jar in build/libs
 ./gradlew runGameTestServer  # automated GameTests
 ```
 
-CI runs build + GameTests on every push and pull request. Pushing a `v*` tag, or pushing to the `release` branch,
-builds and tests both branches and publishes one release with both jars.
+CI runs build and GameTests on every push and pull request. Pushing a `v*` tag, or pushing to the `release` branch,
+publishes a release with the built jars.
 
 ## License
+
 [MIT](LICENSE)

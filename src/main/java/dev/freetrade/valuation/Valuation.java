@@ -88,6 +88,7 @@ public final class Valuation {
             declared.put(ItemKeys.id(d.item()), d.milli() / (double) Money.SCALE);
         }
         Set<String> excluded = resolveSet(table.excluded());
+        declared.keySet().removeAll(excluded); // "excluded" always wins over a declared value
         List<String> all = new ArrayList<>();
         for (Item i : BuiltInRegistries.ITEM) {
             if (i != Items.AIR) all.add(ItemKeys.id(i));
