@@ -169,6 +169,12 @@ public final class Market {
         return accounts.getOrDefault(name, 0L);
     }
 
+    /** Updates the cached balance after a change made directly through the store. */
+    public void cacheAccount(String name, long balance) {
+        accounts.put(name, balance);
+        unitMemo.clear();
+    }
+
     public boolean treasuryInfinite() {
         return settings.treasuryInitialUm() < 0;
     }

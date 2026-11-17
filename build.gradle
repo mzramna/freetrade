@@ -22,10 +22,10 @@ repositories {
     maven { url = "https://maven.blamejared.com/" }
     // EMI
     maven { url = "https://maven.terraformersmc.com/" }
-    // Lightman's Currency (CurseForge files)
+    // Lightman's Currency (Modrinth maven)
     maven {
-        url = "https://cursemaven.com"
-        content { includeGroup "curse.maven" }
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
     }
 }
 
@@ -84,6 +84,9 @@ dependencies {
     }
     additionalRuntimeClasspath "org.xerial:sqlite-jdbc:${sqlite_version}"
     additionalRuntimeClasspath "org.postgresql:postgresql:${postgres_version}"
+
+    // Optional integrations (compile only; loaded at runtime only when the mods are installed)
+    compileOnly "maven.modrinth:lightmans-currency:${lightmans_version}"
 
     testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation "org.junit.jupiter:junit-jupiter"

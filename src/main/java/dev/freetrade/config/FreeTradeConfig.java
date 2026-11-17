@@ -7,6 +7,7 @@ import java.util.Map;
 
 import dev.freetrade.FreeTrade;
 import dev.freetrade.market.BackoffTracker;
+import dev.freetrade.market.Money;
 import dev.freetrade.market.PriceExpression;
 import dev.freetrade.market.PricingEngine;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -34,6 +35,7 @@ public final class FreeTradeConfig {
     private static final ModConfigSpec.ConfigValue<List<? extends String>> CURRENCY;
     private static final ModConfigSpec.BooleanValue LIGHTMANS_COINS;
     private static final ModConfigSpec.BooleanValue LIGHTMANS_BANK;
+    private static final ModConfigSpec.DoubleValue LIGHTMANS_RATE;
     // fees
     private static final ModConfigSpec.DoubleValue TAX_SELL;
     private static final ModConfigSpec.DoubleValue TAX_BUY;
@@ -71,8 +73,10 @@ public final class FreeTradeConfig {
     public static boolean dynamicPropagation = true;
     public static double laborPercent = 0;
     public static boolean damagedItems = true;
-    public static Map<String, Long> currency = new LinkedHashMap<>(Map.of("minecraft:emerald", 1L, "minecraft:emerald_block", 9L));
+    /** Money items -> value in milli-U.M. */
+    public static Map<String, Long> currency = new LinkedHashMap<>(Map.of("minecraft:emerald", 1000L, "minecraft:emerald_block", 9000L));
     public static boolean lightmansCoins = true, lightmansBank = true;
+    public static double lightmansRate = 0.01;
     public static double taxSellPercent = 0, taxBuyPercent = 0;
     public static BackoffTracker.Settings backoff = new BackoffTracker.Settings(true, 3, 600_000, 10, 20);
     public static long treasuryInitial = -1;
@@ -117,7 +121,7 @@ public final class FreeTradeConfig {
 
         b.push("currency");
         CURRENCY = b.comment(
-                        "Items that ARE money, with how many U.M. one of them is worth (\"item_id=value\").",
+                        "Items that ARE money, with how many U.M. one of them is worth (\"item_id=value\", decimals allowed).",
                         "Money items have a fixed value and are never traded as goods. Change is given in the",
                         "largest denominations first.")
                 .defineListAllowEmpty("currency_items", List.of("minecraft:emerald=1", "minecraft:emerald_block=9"),
@@ -126,6 +130,9 @@ public final class FreeTradeConfig {
                 .define("lightmans_coins", true);
         LIGHTMANS_BANK = b.comment("If Lightman's Currency is installed, players can pay/receive through their bank account.")
                 .define("lightmans_bank", true);
+        LIGHTMANS_RATE = b.comment("How many U.M. one unit of Lightman's Currency core value is worth",
+                        "(the copper coin is 1 core value; default: 1 copper coin = 0.01 U.M., 1 gold coin = 1 U.M.).")
+                .defineInRange("lightmans_um_per_core_value", 0.01, 0.001, 1e9);
         b.pop();
 
         b.push("fees");
@@ -204,7 +211,7 @@ public final class FreeTradeConfig {
         int i = s.lastIndexOf('=');
         if (i <= 0) return false;
         try {
-            return Long.parseLong(s.substring(i + 1).trim()) > 0;
+            return Double.parseDouble(s.substring(i + 1).trim()) >= 0.001;
         } catch (NumberFormatException e) {
             return false;
         }
@@ -222,11 +229,12 @@ public final class FreeTradeConfig {
         Map<String, Long> cur = new LinkedHashMap<>();
         for (String s : new ArrayList<>(CURRENCY.get())) {
             int i = s.lastIndexOf('=');
-            cur.put(s.substring(0, i).trim(), Long.parseLong(s.substring(i + 1).trim()));
+            cur.put(s.substring(0, i).trim(), Money.ofDouble(Double.parseDouble(s.substring(i + 1).trim())));
         }
         currency = cur;
         lightmansCoins = LIGHTMANS_COINS.get();
         lightmansBank = LIGHTMANS_BANK.get();
+        lightmansRate = LIGHTMANS_RATE.get();
         taxSellPercent = TAX_SELL.get();
         taxBuyPercent = TAX_BUY.get();
         backoff = new BackoffTracker.Settings(BACKOFF_ENABLED.get(), BACKOFF_THRESHOLD.get(),
