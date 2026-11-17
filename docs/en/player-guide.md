@@ -89,7 +89,14 @@ arrangement). Right-click it to open the guide. It has two tabs.
 4. The Trade Representative.
 5. Sell Point.
 6. Auto Buyer.
-7. Taxes, backoff and the treasury. The current rates are shown in the header.
+7. Taxes, backoff and the treasury. The current rates are on the page.
+
+The pages describe the server you are on, with its own settings and never the defaults: the money items and their
+values, the price formula, the default reference stock, the ceiling and the minimum price, the labor percentage,
+whether values follow the ingredients, the stacks a Trade Representative accepts, whether damaged items are accepted,
+the batch size and interval of the Sell Point and the Auto Buyer, the taxes, the backoff and the treasury. The database
+type is in the header. The book reads these numbers when you open it, and the **Refresh** button in the Catalog tab
+updates them too.
 
 **Catalog** lists every item the association trades:
 
@@ -102,6 +109,9 @@ arrangement). Right-click it to open the guide. It has two tabs.
 
 After you have opened the guide or a trade window, hovering over an item in your inventory also shows its price. Hold
 Shift to see the lot size.
+
+The server administrator can hide the catalog from players. Then the Catalog tab shows a notice instead of the list.
+Operators still see it. Trading with a Trade Representative is not affected: its window always shows the catalog prices.
 
 The catalog shows the buy price without your personal backoff. If you have a backoff penalty, the real price is
 higher. See [Anti-storage backoff](#anti-storage-backoff).
@@ -243,6 +253,8 @@ Representative.
   logs, the logs get cheaper, and so do planks and sticks, since they are made from logs.
 - **Values from recipes.** Items nobody declared get a value from the cheapest recipe that makes them. Modded items
   are priced this way too.
+- **Forced prices.** An operator can fix the price of an item. A fixed price does not follow the formula, so it does not
+  move with supply, and the guide and `/freetrade price` show that price.
 - **Ceiling.** The server can cap the price of one unit, so a very scarce item cannot cost more than the cap.
 - **Taxes.** The server can add a percentage to sales and purchases. Taxes go to the operators' tax account, not to
   the treasury.
