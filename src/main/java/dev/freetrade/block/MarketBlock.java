@@ -34,7 +34,7 @@ public abstract class MarketBlock extends BaseEntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide && placer instanceof Player p && level.getBlockEntity(pos) instanceof MarketStorageBlockEntity be) {
+        if (!level.isClientSide() && placer instanceof Player p && level.getBlockEntity(pos) instanceof MarketStorageBlockEntity be) {
             be.setOwner(p);
         }
     }
@@ -43,10 +43,10 @@ public abstract class MarketBlock extends BaseEntityBlock {
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (!(level.getBlockEntity(pos) instanceof MarketStorageBlockEntity be)) return InteractionResult.PASS;
         if (!be.canAccess(player)) {
-            player.displayClientMessage(Component.translatable("freetrade.block.not_owner", be.ownerName()), true);
+            player.sendOverlayMessage(Component.translatable("freetrade.block.not_owner", be.ownerName()));
             return InteractionResult.CONSUME;
         }
         if (player instanceof ServerPlayer sp) sp.openMenu(menu(be), pos);
@@ -60,17 +60,8 @@ public abstract class MarketBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
-        if (!state.is(newState.getBlock()) && !level.isClientSide
-                && level.getBlockEntity(pos) instanceof MarketStorageBlockEntity be) {
-            be.dropContents(level, pos);
-        }
-        super.onRemove(state, level, pos, newState, moved);
-    }
-
-    @Override
     @Nullable
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return level.isClientSide ? null : MarketStorageBlockEntity::serverTick;
+        return level.isClientSide() ? null : MarketStorageBlockEntity::serverTick;
     }
 }

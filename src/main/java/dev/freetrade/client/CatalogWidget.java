@@ -11,7 +11,7 @@ import dev.freetrade.market.Money;
 import dev.freetrade.net.Catalog;
 import dev.freetrade.util.ItemKeys;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -124,7 +124,7 @@ public class CatalogWidget {
         return milli < 0 ? "-" : Money.format(milli);
     }
 
-    public void render(GuiGraphics g, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         g.fill(x, y, x + width, y + height, 0xC0101010);
         int rows = rows();
         for (int i = 0; i < rows && scroll + i < visible.size(); i++) {
@@ -133,12 +133,12 @@ public class CatalogWidget {
             boolean hover = mouseX >= x && mouseX < x + width - 4 && mouseY >= ry && mouseY < ry + ROW_HEIGHT;
             if (e == selected) g.fill(x, ry, x + width - 4, ry + ROW_HEIGHT, 0x6040A040);
             else if (hover) g.fill(x, ry, x + width - 4, ry + ROW_HEIGHT, 0x30FFFFFF);
-            g.renderItem(ItemKeys.stack(e.item(), 1), x + 2, ry + 2);
+            g.item(ItemKeys.stack(e.item(), 1), x + 2, ry + 2);
             String n = font.plainSubstrByWidth(name(e).getString(), width - 26);
-            g.drawString(font, n, x + 22, ry + 1, 0xFFFFFF, false);
-            int stockColor = e.stock() > 0 ? 0x80FF80 : 0xFF8080;
+            g.text(font, n, x + 22, ry + 1, 0xFFFFFFFF, false);
+            int stockColor = e.stock() > 0 ? 0xFF80FF80 : 0xFFFF8080;
             Component line = Component.translatable("freetrade.catalog.row", e.stock(), price(e.sell()), price(e.buy()));
-            g.drawString(font, font.plainSubstrByWidth(line.getString(), width - 26), x + 22, ry + 11, stockColor, false);
+            g.text(font, font.plainSubstrByWidth(line.getString(), width - 26), x + 22, ry + 11, stockColor, false);
         }
         // scrollbar
         if (visible.size() > rows) {
@@ -148,7 +148,7 @@ public class CatalogWidget {
             g.fill(x + width - 3, barY, x + width, barY + barH, 0xC0FFFFFF);
         }
         if (visible.isEmpty()) {
-            g.drawCenteredString(font, Component.translatable("freetrade.catalog.empty"), x + width / 2, y + height / 2 - 4, 0xAAAAAA);
+            g.centeredText(font, Component.translatable("freetrade.catalog.empty"), x + width / 2, y + height / 2 - 4, 0xFFAAAAAA);
         }
     }
 

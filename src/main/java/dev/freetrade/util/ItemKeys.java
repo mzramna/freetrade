@@ -3,7 +3,7 @@ package dev.freetrade.util;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -21,7 +21,7 @@ public final class ItemKeys {
     }
 
     public static Item item(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
+        Identifier rl = Identifier.tryParse(id);
         if (rl == null) return Items.AIR;
         return BuiltInRegistries.ITEM.getOptional(rl).orElse(Items.AIR);
     }

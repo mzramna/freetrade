@@ -47,7 +47,7 @@ public final class FreeTradeServer {
     }
 
     public static Market.TradeContext context(Player player, String source) {
-        return new Market.TradeContext(player.getUUID().toString(), player.getGameProfile().getName(), source);
+        return new Market.TradeContext(player.getUUID().toString(), player.getGameProfile().name(), source);
     }
 
     public static Market.TradeContext context(String ownerUuid, String ownerName, String source) {
@@ -116,6 +116,6 @@ public final class FreeTradeServer {
     }
 
     public static boolean isOp(ServerPlayer p) {
-        return p.hasPermissions(2);
+        return p.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
     }
 }

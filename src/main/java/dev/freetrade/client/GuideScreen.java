@@ -6,14 +6,14 @@ import java.util.Locale;
 
 import dev.freetrade.market.Money;
 import dev.freetrade.net.FreeTradeNetwork;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /** The Trade Association guide book: a short "How it works" text and a searchable catalog of prices. */
 public class GuideScreen extends Screen {
@@ -117,7 +117,7 @@ public class GuideScreen extends Screen {
             filterButtons[i].active = filter != f;
         }
         addRenderableWidget(Button.builder(Component.translatable("freetrade.guide.refresh"), b ->
-                PacketDistributor.sendToServer(new FreeTradeNetwork.CatalogRequest(false)))
+                ClientPacketDistributor.sendToServer(new FreeTradeNetwork.CatalogRequest(false)))
                 .bounds(panelX + panelW - 8 - refreshW, panelY + 44, refreshW, 16).build());
 
         catalog.setBounds(panelX + 8, panelY + 64, w, panelH - 64 - 20);
@@ -163,35 +163,35 @@ public class GuideScreen extends Screen {
         }
     }
 
+    /** The background is drawn by the framework (extractBackground) before this; the panel goes under the widgets. */
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         drawPanel(g);
-        for (Renderable r : renderables) r.render(g, mouseX, mouseY, partialTick);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
 
         List<Component> tooltip = null;
         if (tab == TAB_HOW) {
             renderHow(g);
         } else {
-            g.drawString(font, Component.translatable("freetrade.guide.count", catalog.visibleCount()),
+            g.text(font, Component.translatable("freetrade.guide.count", catalog.visibleCount()),
                     panelX + 8, panelY + panelH - 14, MUTED, false);
             catalog.render(g, mouseX, mouseY);
             tooltip = catalog.tooltip(mouseX, mouseY);
         }
-        if (tooltip != null) g.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+        if (tooltip != null) g.setComponentTooltipForNextFrame(font, tooltip, mouseX, mouseY);
     }
 
-    private void drawPanel(GuiGraphics g) {
+    private void drawPanel(GuiGraphicsExtractor g) {
         g.fill(panelX - 2, panelY - 2, panelX + panelW + 2, panelY + panelH + 2, BORDER);
         g.fill(panelX, panelY, panelX + panelW, panelY + panelH, PAPER);
         g.fill(panelX + 3, panelY + 3, panelX + panelW - 3, panelY + 4, BORDER);
         g.fill(panelX + 3, panelY + panelH - 4, panelX + panelW - 3, panelY + panelH - 3, BORDER);
     }
 
-    private void renderHow(GuiGraphics g) {
+    private void renderHow(GuiGraphicsExtractor g) {
         int textW = panelW - 24;
         Component title = Component.translatable("freetrade.guide.page." + (page + 1) + ".title");
-        g.drawCenteredString(font, title, panelX + panelW / 2, panelY + 26, INK);
+        g.centeredText(font, title, panelX + panelW / 2, panelY + 26, INK);
 
         List<Component> header = headerLines();
         List<FormattedCharSequence> headerRows = new ArrayList<>();
@@ -200,15 +200,15 @@ public class GuideScreen extends Screen {
         int y = panelY + 40;
         for (FormattedCharSequence line : bodyLines(textW)) {
             if (y + 9 > headerTop - 2) break;
-            g.drawString(font, line, panelX + 12, y, INK, false);
+            g.text(font, line, panelX + 12, y, INK, false);
             y += 9;
         }
         int hy = headerTop;
         for (FormattedCharSequence row : headerRows) {
-            g.drawString(font, row, panelX + 12, hy, MUTED, false);
+            g.text(font, row, panelX + 12, hy, MUTED, false);
             hy += 9;
         }
-        g.drawCenteredString(font, Component.translatable("freetrade.guide.page_indicator", page + 1, PAGES),
+        g.centeredText(font, Component.translatable("freetrade.guide.page_indicator", page + 1, PAGES),
                 panelX + panelW / 2, panelY + panelH - 18, MUTED);
     }
 
@@ -239,9 +239,9 @@ public class GuideScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (tab == TAB_CATALOG && catalog.mouseClicked(mouseX, mouseY, button)) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (tab == TAB_CATALOG && catalog.mouseClicked(event.x(), event.y(), event.button())) return true;
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override

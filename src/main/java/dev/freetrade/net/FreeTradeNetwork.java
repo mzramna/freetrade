@@ -14,7 +14,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -27,7 +27,7 @@ public final class FreeTradeNetwork {
     private FreeTradeNetwork() {}
 
     static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> payloadType(String name) {
-        return new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(FreeTrade.MODID, name));
+        return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(FreeTrade.MODID, name));
     }
 
     /** Server -> client: money items and their value (milli). */
@@ -121,7 +121,7 @@ public final class FreeTradeNetwork {
             if (ctx.player() instanceof ServerPlayer sp && sp.containerMenu instanceof MachineMenu m
                     && m.containerId == p.containerId() && m.stillValid(sp)) {
                 if (!m.setTarget(p.stack())) {
-                    sp.displayClientMessage(net.minecraft.network.chat.Component.translatable("freetrade.block.target_locked"), true);
+                    sp.sendOverlayMessage(net.minecraft.network.chat.Component.translatable("freetrade.block.target_locked"));
                 }
             }
         });
@@ -166,7 +166,7 @@ public final class FreeTradeNetwork {
     public static void sendCatalog(ServerPlayer player, boolean openGuide) {
         Market m = FreeTradeServer.market();
         if (m == null) {
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable("freetrade.error.offline"), false);
+            player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("freetrade.error.offline"));
             return;
         }
         send(player, new CatalogPayload(openGuide, Catalog.header(m), Catalog.build(m)));

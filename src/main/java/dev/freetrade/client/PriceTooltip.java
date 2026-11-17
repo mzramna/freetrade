@@ -10,7 +10,7 @@ import dev.freetrade.net.ClientHooks;
 import dev.freetrade.net.FreeTradeNetwork;
 import dev.freetrade.util.ItemKeys;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
@@ -33,7 +33,7 @@ public final class PriceTooltip {
             if (e != null) {
                 lines.add(Component.translatable("freetrade.tooltip.price", CatalogWidget.price(e.sell()),
                         CatalogWidget.price(e.buy()), e.stock()).withStyle(ChatFormatting.GRAY));
-                if (Screen.hasShiftDown()) {
+                if (Minecraft.getInstance().hasShiftDown()) {
                     if (e.lot() > 1) {
                         lines.add(Component.translatable("freetrade.tooltip.lot", e.lot())
                                 .withStyle(ChatFormatting.DARK_GRAY));

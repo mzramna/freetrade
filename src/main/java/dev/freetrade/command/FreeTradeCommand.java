@@ -62,25 +62,25 @@ public final class FreeTradeCommand {
                 .then(Commands.literal("price")
                         .executes(c -> price(c, c.getSource().getPlayerOrException().getMainHandItem().getItem()))
                         .then(Commands.argument("item", ItemArgument.item(ctx))
-                                .executes(c -> price(c, ItemArgument.getItem(c, "item").getItem()))))
-                .then(Commands.literal("recalc").requires(s -> s.hasPermission(2)).executes(FreeTradeCommand::recalc))
-                .then(Commands.literal("reload").requires(s -> s.hasPermission(2)).executes(FreeTradeCommand::reload))
-                .then(Commands.literal("setstock").requires(s -> s.hasPermission(2))
+                                .executes(c -> price(c, ItemArgument.getItem(c, "item").item().value()))))
+                .then(Commands.literal("recalc").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)).executes(FreeTradeCommand::recalc))
+                .then(Commands.literal("reload").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)).executes(FreeTradeCommand::reload))
+                .then(Commands.literal("setstock").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("item", ItemArgument.item(ctx))
                                 .then(Commands.argument("amount", LongArgumentType.longArg(0))
                                         .executes(FreeTradeCommand::setStock))))
-                .then(Commands.literal("setvalue").requires(s -> s.hasPermission(2))
+                .then(Commands.literal("setvalue").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("item", ItemArgument.item(ctx))
                                 .then(Commands.argument("value", DoubleArgumentType.doubleArg(0))
                                         .executes(FreeTradeCommand::setValue))))
-                .then(Commands.literal("unpriced").requires(s -> s.hasPermission(2))
+                .then(Commands.literal("unpriced").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(c -> unpriced(c, 1))
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .executes(c -> unpriced(c, IntegerArgumentType.getInteger(c, "page")))))
-                .then(Commands.literal("history").requires(s -> s.hasPermission(2))
+                .then(Commands.literal("history").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(c -> history(c, null))
                         .then(Commands.argument("item", ItemArgument.item(ctx))
-                                .executes(c -> history(c, ItemKeys.id(ItemArgument.getItem(c, "item").getItem())))))
+                                .executes(c -> history(c, ItemKeys.id(ItemArgument.getItem(c, "item").item().value())))))
                 .then(account(ctx, "account", null))
                 .then(account(ctx, "treasury", MarketStore.TREASURY))
                 .then(account(ctx, "taxaccount", MarketStore.TAX))
@@ -123,18 +123,18 @@ public final class FreeTradeCommand {
         String id = ItemKeys.id(item);
         CommandSourceStack s = c.getSource();
         if (Currency.isCurrency(item)) {
-            reply(s, Component.translatable("freetrade.price.currency", item.getDescription(), Money.format(Currency.valueOf(item))));
+            reply(s, Component.translatable("freetrade.price.currency", item.getDefaultInstance().getHoverName(), Money.format(Currency.valueOf(item))));
             return 1;
         }
         if (!m.isTradeable(id)) {
-            s.sendFailure(Component.translatable("freetrade.price.none", item.getDescription()));
+            s.sendFailure(Component.translatable("freetrade.price.none", item.getDefaultInstance().getHoverName()));
             return 0;
         }
         long stock = m.stock(id);
         long sell = m.quoteSellNet(id, 1, 1.0);
         long buy = m.quoteBuy(id, 1, 1.0);
         long lot = m.engine().unitsPerOneUm(m.baseValue(id), m.reference(id), stock, 100_000);
-        reply(s, Component.translatable("freetrade.price.header", item.getDescription(), stock));
+        reply(s, Component.translatable("freetrade.price.header", item.getDefaultInstance().getHoverName(), stock));
         reply(s, Component.translatable("freetrade.price.sell", Money.format(sell)));
         reply(s, buy < 0 ? Component.translatable("freetrade.price.buy_none")
                 : Component.translatable("freetrade.price.buy", Money.format(buy)));
@@ -172,16 +172,16 @@ public final class FreeTradeCommand {
 
     private static int setStock(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         Market m = market(c);
-        Item item = ItemArgument.getItem(c, "item").getItem();
+        Item item = ItemArgument.getItem(c, "item").item().value();
         long amount = LongArgumentType.getLong(c, "amount");
         later(c.getSource(), m.setStock(ItemKeys.id(item), amount),
-                v -> Component.translatable("freetrade.setstock.done", item.getDescription(), v));
+                v -> Component.translatable("freetrade.setstock.done", item.getDefaultInstance().getHoverName(), v));
         return 1;
     }
 
     private static int setValue(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         market(c);
-        Item item = ItemArgument.getItem(c, "item").getItem();
+        Item item = ItemArgument.getItem(c, "item").item().value();
         double value = DoubleArgumentType.getDouble(c, "value");
         try {
             ValueTable.putValue(ItemKeys.id(item), value);
@@ -189,7 +189,7 @@ public final class FreeTradeCommand {
             c.getSource().sendFailure(Component.literal(e.toString()));
             return 0;
         }
-        reply(c.getSource(), Component.translatable("freetrade.setvalue.done", item.getDescription(), value));
+        reply(c.getSource(), Component.translatable("freetrade.setvalue.done", item.getDefaultInstance().getHoverName(), value));
         return reload(c);
     }
 
@@ -229,7 +229,7 @@ public final class FreeTradeCommand {
     }
 
     private static ArgumentBuilder<CommandSourceStack, ?> account(CommandBuildContext ctx, String literal, String fixed) {
-        var lit = Commands.literal(literal).requires(s -> s.hasPermission(2));
+        var lit = Commands.literal(literal).requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS));
         ArgumentBuilder<CommandSourceStack, ?> base = fixed == null
                 ? Commands.argument("account", StringArgumentType.word()).suggests(ACCOUNTS)
                 : lit;
@@ -247,7 +247,7 @@ public final class FreeTradeCommand {
                                 .executes(c -> withdraw(c, accountName(c, fixed), null, null))
                                 .then(Commands.argument("item", ItemArgument.item(ctx))
                                         .executes(c -> withdraw(c, accountName(c, fixed), null,
-                                                ItemArgument.getItem(c, "item").getItem())))))
+                                                ItemArgument.getItem(c, "item").item().value())))))
                 .then(Commands.literal("remove")
                         .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.001))
                                 .executes(c -> adjust(c, accountName(c, fixed), false))))
@@ -309,7 +309,7 @@ public final class FreeTradeCommand {
         if (only != null) {
             long v = Currency.valueOf(only);
             if (v <= 0) {
-                c.getSource().sendFailure(Component.translatable("freetrade.error.not_currency", only.getDescription()));
+                c.getSource().sendFailure(Component.translatable("freetrade.error.not_currency", only.getDefaultInstance().getHoverName()));
                 return 0;
             }
             amount = (requested / v) * v;
@@ -346,7 +346,7 @@ public final class FreeTradeCommand {
     // ------------------------------------------------------------------ triggers
 
     private static ArgumentBuilder<CommandSourceStack, ?> trigger() {
-        return Commands.literal("trigger").requires(s -> s.hasPermission(2))
+        return Commands.literal("trigger").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("list").executes(FreeTradeCommand::triggerList))
                 .then(Commands.literal("remove").then(Commands.argument("id", StringArgumentType.word()).suggests(TRIGGER_IDS)
                         .executes(c -> {

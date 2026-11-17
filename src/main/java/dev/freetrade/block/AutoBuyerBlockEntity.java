@@ -12,7 +12,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Auto Buyer (also the trade representative's workstation): money items put in become balance, and the block
@@ -76,53 +75,10 @@ public class AutoBuyerBlockEntity extends MarketStorageBlockEntity {
         }));
     }
 
-    private final IItemHandler handler = new IItemHandler() {
-        @Override
-        public int getSlots() {
-            return 2;
-        }
-
-        @Override
-        public ItemStack getStackInSlot(int slot) {
-            if (slot != 1 || !powered || pending || stored <= 0) return ItemStack.EMPTY;
-            ItemStack s = new ItemStack(targetItem());
-            s.setCount((int) Math.min(s.getMaxStackSize(), stored));
-            return s;
-        }
-
-        @Override
-        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            if (slot != 0 || stack.isEmpty() || !Currency.isCurrency(stack)) return stack;
-            return depositCurrency(stack, simulate);
-        }
-
-        @Override
-        public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            if (slot != 1 || !powered || pending || stored <= 0) return ItemStack.EMPTY;
-            ItemStack s = new ItemStack(targetItem());
-            int n = (int) Math.min(Math.min(amount, s.getMaxStackSize()), stored);
-            if (n <= 0) return ItemStack.EMPTY;
-            if (!simulate) {
-                stored -= n;
-                setChanged();
-            }
-            s.setCount(n);
-            return s;
-        }
-
-        @Override
-        public int getSlotLimit(int slot) {
-            return 64;
-        }
-
-        @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            return slot == 0 && Currency.isCurrency(stack);
-        }
-    };
+    private final MarketResourceHandler handler = new MarketResourceHandler(this, false);
 
     @Override
-    public IItemHandler itemHandler(@Nullable Direction side) {
+    public net.neoforged.neoforge.transfer.ResourceHandler<net.neoforged.neoforge.transfer.item.ItemResource> itemHandler(@Nullable Direction side) {
         return handler;
     }
 }

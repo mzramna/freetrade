@@ -161,6 +161,6 @@ public final class Triggers {
                 .replace("{count}", Integer.toString(t.fired()));
         if (cmd.startsWith("/")) cmd = cmd.substring(1);
         FreeTrade.LOG.info("Trigger {} fired: {}", t.id(), cmd);
-        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withPermission(4), cmd);
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.OWNER), cmd);
     }
 }

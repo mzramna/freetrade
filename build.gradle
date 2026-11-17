@@ -33,15 +33,11 @@ base {
     archivesName = "${mod_id}-${minecraft_version}"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 neoForge {
     version = project.neo_version
 
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
 
     runs {
         client {
@@ -82,13 +78,10 @@ dependencies {
     jarJar(implementation("org.postgresql:postgresql")) {
         version { strictly "[${postgres_version},)"; prefer postgres_version }
     }
-    additionalRuntimeClasspath "org.xerial:sqlite-jdbc:${sqlite_version}"
-    additionalRuntimeClasspath "org.postgresql:postgresql:${postgres_version}"
 
     // Optional integrations (compile only; loaded at runtime only when the mods are installed)
     compileOnly "maven.modrinth:lightmans-currency:${lightmans_version}"
-    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
-    compileOnly "dev.emi:emi-neoforge:${emi_version}"
+    compileOnly "mezz.jei:jei-26.1.2-neoforge-api:${jei_version}"
 
     testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation "org.junit.jupiter:junit-jupiter"
@@ -120,6 +113,7 @@ neoForge.ideSyncTask generateModMetadata
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xmaxerrs', '1000']
 }
 
 idea {

@@ -21,7 +21,7 @@ import dev.freetrade.market.Money;
 import dev.freetrade.util.ItemKeys;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -32,6 +32,12 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SmithingTransformRecipe;
+import net.minecraft.world.item.crafting.PlacementInfo;
+import net.minecraft.world.item.crafting.SingleItemRecipe;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.minecraft.util.context.ContextMap;
 
 /**
  * Minecraft side of valuation: reads values.json, every recipe the server knows (crafting, smelting,
@@ -53,7 +59,7 @@ public final class Valuation {
         for (var e : raw.entrySet()) {
             String k = e.getKey();
             if (k.startsWith("#")) {
-                ResourceLocation rl = ResourceLocation.tryParse(k.substring(1));
+                Identifier rl = Identifier.tryParse(k.substring(1));
                 if (rl == null) continue;
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, rl);
                 for (var h : BuiltInRegistries.ITEM.getTagOrEmpty(tag)) {
@@ -90,51 +96,76 @@ public final class Valuation {
                 all, extractRecipes(server));
     }
 
+    @SuppressWarnings("deprecation") // Ingredient.items(): the only way to list the items of any ingredient
     public static List<RecipeEdge> extractRecipes(MinecraftServer server) {
         List<RecipeEdge> out = new ArrayList<>();
-        var registries = server.registryAccess();
+        ContextMap displayContext = SlotDisplayContext.fromLevel(server.overworld());
         for (RecipeHolder<?> holder : server.getRecipeManager().getRecipes()) {
             Recipe<?> recipe = holder.value();
             try {
                 if (recipe.isSpecial()) continue;
-                ItemStack result = recipe.getResultItem(registries);
-                if (result == null || result.isEmpty()) continue;
                 List<Ingredient> ings = new ArrayList<>();
-                if (recipe instanceof SmithingTransformRecipe s) {
-                    ings.add(s.template);
-                    ings.add(s.base);
-                    ings.add(s.addition);
+                ItemStack result;
+                if (recipe instanceof SingleItemRecipe sir) {
+                    // smelting, blasting, smoking, campfire, stonecutting (and mod subclasses)
+                    ings.add(sir.input());
+                    result = sir.input().items().findFirst()
+                            .map(h -> sir.assemble(new SingleRecipeInput(new ItemStack(h))))
+                            .orElse(ItemStack.EMPTY);
+                } else if (recipe instanceof SmithingTransformRecipe s) {
+                    s.templateIngredient().ifPresent(ings::add);
+                    ings.add(s.baseIngredient());
+                    s.additionIngredient().ifPresent(ings::add);
+                    result = displayResult(recipe, displayContext);
                 } else {
-                    ings.addAll(recipe.getIngredients());
+                    PlacementInfo placement = recipe.placementInfo();
+                    if (placement.isImpossibleToPlace()) continue;
+                    ings.addAll(placement.ingredients());
+                    result = displayResult(recipe, displayContext);
                 }
+                if (result == null || result.isEmpty()) continue;
                 Map<List<String>, Integer> slots = new LinkedHashMap<>();
                 List<String> remainders = new ArrayList<>();
                 for (Ingredient ing : ings) {
                     if (ing == null || ing.isEmpty()) continue;
-                    ItemStack[] stacks = ing.getItems();
-                    if (stacks.length == 0) continue;
                     List<String> alts = new ArrayList<>();
-                    ItemStack remainder = ItemStack.EMPTY;
-                    for (ItemStack st : stacks) {
-                        String id = ItemKeys.id(st);
+                    String remainder = null;
+                    for (var h : (Iterable<net.minecraft.core.Holder<Item>>) ing.items()::iterator) {
+                        Item item = h.value();
+                        String id = ItemKeys.id(item);
                         if (!alts.contains(id)) alts.add(id);
-                        if (remainder.isEmpty() && recipe.getType() == RecipeType.CRAFTING) {
-                            remainder = st.getCraftingRemainingItem();
+                        if (remainder == null && recipe.getType() == RecipeType.CRAFTING) {
+                            var rem = item.getCraftingRemainder();
+                            if (rem != null) remainder = ItemKeys.id(rem.item().value());
                         }
                     }
-                    slots.merge(alts, Math.max(1, stacks[0].getCount()), Integer::sum);
-                    if (!remainder.isEmpty()) remainders.add(ItemKeys.id(remainder));
+                    if (alts.isEmpty()) continue;
+                    slots.merge(alts, 1, Integer::sum);
+                    if (remainder != null) remainders.add(remainder);
                 }
                 if (slots.isEmpty()) continue;
                 List<RecipeEdge.Slot> slotList = new ArrayList<>();
                 slots.forEach((alts, n) -> slotList.add(new RecipeEdge.Slot(List.copyOf(alts), n)));
-                out.add(new RecipeEdge(holder.id().toString(), ItemKeys.id(result), result.getCount(), slotList,
+                out.add(new RecipeEdge(holder.id().identifier().toString(), ItemKeys.id(result), result.getCount(), slotList,
                         remainders));
             } catch (RuntimeException e) {
                 // some mod recipes cannot report static ingredients/results
             }
         }
         return out;
+    }
+
+    /** Result shown by the recipe display, when every display agrees on it (null otherwise). */
+    @javax.annotation.Nullable
+    private static ItemStack displayResult(Recipe<?> recipe, ContextMap context) {
+        ItemStack found = null;
+        for (RecipeDisplay display : recipe.display()) {
+            ItemStack stack = display.result().resolveForFirstStack(context);
+            if (stack.isEmpty()) return null;
+            if (found == null) found = stack;
+            else if (!ItemStack.isSameItemSameComponents(found, stack)) return null;
+        }
+        return found;
     }
 
     // ------------------------------------------------------------------ solve / store

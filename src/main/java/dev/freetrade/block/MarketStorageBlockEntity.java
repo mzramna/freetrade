@@ -20,7 +20,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.Containers;
@@ -34,7 +34,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Shared logic of the Sell Point and the Auto Buyer: one configured item kept as a plain counter, a money
@@ -43,7 +42,7 @@ import net.neoforged.neoforge.items.IItemHandler;
  */
 public abstract class MarketStorageBlockEntity extends BlockEntity {
     public static final TagKey<Block> STORAGE_UPGRADES =
-            TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath("freetrade", "storage_upgrades"));
+            TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("freetrade", "storage_upgrades"));
     public static final int MAX_UPGRADES = 5;
     public static final int BASE_STACKS = 54;
 
@@ -73,12 +72,12 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
 
     public void setOwner(Player player) {
         this.owner = player.getUUID();
-        this.ownerName = player.getGameProfile().getName();
+        this.ownerName = player.getGameProfile().name();
         setChanged();
     }
 
     public boolean canAccess(Player player) {
-        return owner == null || owner.equals(player.getUUID()) || player.hasPermissions(2);
+        return owner == null || owner.equals(player.getUUID()) || player.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
     }
 
     public String ownerName() {
@@ -312,7 +311,7 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
 
     // ------------------------------------------------------------------ hopper access
 
-    public abstract IItemHandler itemHandler(@Nullable Direction side);
+    public abstract net.neoforged.neoforge.transfer.ResourceHandler<net.neoforged.neoforge.transfer.item.ItemResource> itemHandler(@Nullable Direction side);
 
     // ------------------------------------------------------------------ GUI data (shorts)
 
@@ -357,35 +356,38 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
     // ------------------------------------------------------------------ persistence
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        writeShared(tag);
-        tag.putLong("stored", stored);
-        tag.putLong("balance", balance);
-        tag.putInt("currency", currencyIndex);
-    }
-
-    private void writeShared(CompoundTag tag) {
-        if (owner != null) tag.putUUID("owner", owner);
-        tag.putString("ownerName", ownerName);
-        tag.putString("target", target);
+    protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput out) {
+        super.saveAdditional(out);
+        out.putString("owner", owner == null ? "" : owner.toString());
+        out.putString("ownerName", ownerName);
+        out.putString("target", target);
+        out.putLong("stored", stored);
+        out.putLong("balance", balance);
+        out.putInt("currency", currencyIndex);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        owner = tag.hasUUID("owner") ? tag.getUUID("owner") : null;
-        ownerName = tag.getString("ownerName");
-        target = tag.getString("target");
-        if (tag.contains("stored")) stored = tag.getLong("stored");
-        if (tag.contains("balance")) balance = tag.getLong("balance");
-        if (tag.contains("currency")) currencyIndex = tag.getInt("currency");
+    protected void loadAdditional(net.minecraft.world.level.storage.ValueInput in) {
+        super.loadAdditional(in);
+        String o = in.getStringOr("owner", "");
+        try {
+            owner = o.isEmpty() ? null : UUID.fromString(o);
+        } catch (IllegalArgumentException e) {
+            owner = null;
+        }
+        ownerName = in.getStringOr("ownerName", "");
+        target = in.getStringOr("target", "");
+        stored = in.getLongOr("stored", stored);
+        balance = in.getLongOr("balance", balance);
+        currencyIndex = in.getIntOr("currency", currencyIndex);
     }
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        writeShared(tag);
+        tag.putString("owner", owner == null ? "" : owner.toString());
+        tag.putString("ownerName", ownerName);
+        tag.putString("target", target);
         return tag;
     }
 
@@ -394,9 +396,14 @@ public abstract class MarketStorageBlockEntity extends BlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null && !level.isClientSide()) dropContents(level, pos);
+    }
+
     protected void sync() {
         setChanged();
-        if (level != null && !level.isClientSide) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+        if (level != null && !level.isClientSide()) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
     public boolean stillValid(ServerPlayer p) {

@@ -80,7 +80,7 @@ public abstract class MachineMenu extends AbstractContainerMenu {
 
     /** Server: moves what was put in the input slot into the block. */
     private void absorb(Player player) {
-        if (be == null || player.level().isClientSide) return;
+        if (be == null || player.level().isClientSide()) return;
         ItemStack s = input.getItem(0);
         if (s.isEmpty()) return;
         ItemStack rest;
@@ -202,7 +202,7 @@ public abstract class MachineMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        if (!player.level().isClientSide) clearContainer(player, input);
+        if (!player.level().isClientSide()) clearContainer(player, input);
     }
 
     @Override

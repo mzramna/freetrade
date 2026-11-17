@@ -19,7 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -95,7 +95,7 @@ public class TraderMenu extends AbstractContainerMenu {
         if (kind.isEmpty()) return;
         String id = ItemKeys.id(kind);
         if (!m.isTradeable(id)) {
-            sp.displayClientMessage(Component.translatable("freetrade.trader.not_tradeable", kind.getHoverName()), false);
+            sp.sendSystemMessage(Component.translatable("freetrade.trader.not_tradeable", kind.getHoverName()));
             return;
         }
         List<ItemStack> escrow = new ArrayList<>();
@@ -105,7 +105,7 @@ public class TraderMenu extends AbstractContainerMenu {
             ItemStack s = grid.getItem(i);
             if (s.isEmpty()) continue;
             if (!ItemKeys.isPlain(s, FreeTradeConfig.damagedItems)) {
-                sp.displayClientMessage(Component.translatable("freetrade.trader.custom_item"), false);
+                sp.sendSystemMessage(Component.translatable("freetrade.trader.custom_item"));
                 continue;
             }
             factorSum += ItemKeys.durabilityFactor(s) * s.getCount();
@@ -117,7 +117,7 @@ public class TraderMenu extends AbstractContainerMenu {
         double factor = factorSum / total;
         final int offered = total;
         busy = true;
-        MinecraftServer server = sp.server;
+        MinecraftServer server = sp.level().getServer();
         m.sell(FreeTradeServer.context(sp, "villager"), id, offered, factor, true).thenAccept(res -> server.execute(() -> {
             busy = false;
             long back = offered - (res.ok() ? res.units() : 0);
@@ -131,15 +131,15 @@ public class TraderMenu extends AbstractContainerMenu {
             }
             Give.toPlayer(sp, returned);
             if (!res.ok()) {
-                sp.displayClientMessage(errorText(res.error(), kind), false);
+                sp.sendSystemMessage(errorText(res.error(), kind));
                 return;
             }
             long payout = res.payoutMilli();
             long left = payout;
             if (bank && Wallet.bankAvailable()) left = Wallet.depositToBank(sp, payout);
             Wallet.giveChange(sp, left);
-            sp.displayClientMessage(Component.translatable("freetrade.trader.sold", res.units(), kind.getHoverName(),
-                    Money.format(payout)), false);
+            sp.sendSystemMessage(Component.translatable("freetrade.trader.sold", res.units(), kind.getHoverName(),
+                    Money.format(payout)));
             FreeTradeNetwork.sendCatalog(sp, false);
         }));
     }
@@ -154,20 +154,20 @@ public class TraderMenu extends AbstractContainerMenu {
         ItemStack kind = ItemKeys.stack(id, 1);
         if (kind.isEmpty()) return;
         busy = true;
-        MinecraftServer server = sp.server;
+        MinecraftServer server = sp.level().getServer();
         String player = sp.getUUID().toString();
         m.backoffMultiplier(player, id).thenAccept(mult -> server.execute(() -> {
             long quote = m.quoteBuy(id, qty, mult);
             if (quote < 0) {
                 busy = false;
-                sp.displayClientMessage(Component.translatable("freetrade.trader.no_stock", kind.getHoverName()), false);
+                sp.sendSystemMessage(Component.translatable("freetrade.trader.no_stock", kind.getHoverName()));
                 return;
             }
             boolean useBank = bank && Wallet.bankAvailable();
             long taken = useBank ? Wallet.takeFromBank(sp, quote) : Wallet.takeFromInventory(sp.getInventory(), quote);
             if (taken <= 0) {
                 busy = false;
-                sp.displayClientMessage(Component.translatable("freetrade.trader.no_money", Money.format(quote)), false);
+                sp.sendSystemMessage(Component.translatable("freetrade.trader.no_money", Money.format(quote)));
                 return;
             }
             m.buy(FreeTradeServer.context(sp, "villager"), id, qty, taken, true).thenAccept(res -> server.execute(() -> {
@@ -176,7 +176,7 @@ public class TraderMenu extends AbstractContainerMenu {
                 if (useBank) change = Wallet.depositToBank(sp, change);
                 Wallet.giveChange(sp, change);
                 if (!res.ok()) {
-                    sp.displayClientMessage(errorText(res.error(), kind), false);
+                    sp.sendSystemMessage(errorText(res.error(), kind));
                     return;
                 }
                 List<ItemStack> items = new ArrayList<>();
@@ -188,8 +188,8 @@ public class TraderMenu extends AbstractContainerMenu {
                     left -= n;
                 }
                 Give.toPlayer(sp, items);
-                sp.displayClientMessage(Component.translatable("freetrade.trader.bought", res.units(), kind.getHoverName(),
-                        Money.format(res.costMilli())), false);
+                sp.sendSystemMessage(Component.translatable("freetrade.trader.bought", res.units(), kind.getHoverName(),
+                        Money.format(res.costMilli())));
                 FreeTradeNetwork.sendCatalog(sp, false);
             }));
         }));
@@ -229,7 +229,7 @@ public class TraderMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        if (!player.level().isClientSide) clearContainer(player, grid);
+        if (!player.level().isClientSide()) clearContainer(player, grid);
         if (villager != null) villager.setTradingPlayer(null);
     }
 
@@ -237,6 +237,6 @@ public class TraderMenu extends AbstractContainerMenu {
     public boolean stillValid(Player player) {
         if (villager == null) return true;
         return villager.isAlive() && player.distanceToSqr(villager) <= 64
-                && villager.getVillagerData().getProfession() == ModRegistries.TRADE_REPRESENTATIVE.get();
+                && villager.getVillagerData().profession().is(ModRegistries.TRADE_REPRESENTATIVE.getKey());
     }
 }

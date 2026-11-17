@@ -10,16 +10,18 @@ import dev.freetrade.net.Catalog;
 import dev.freetrade.net.ClientHooks;
 import dev.freetrade.net.FreeTradeNetwork;
 import dev.freetrade.util.ItemKeys;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
  * The trade representative's window. Left: the sell grid (one kind of item) and the Sell button. Right: the
@@ -39,9 +41,7 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     private FreeTradeNetwork.CatalogPayload lastApplied;
 
     public TraderScreen(TraderMenu menu, Inventory inv, Component title) {
-        super(menu, inv, title);
-        this.imageWidth = 352;
-        this.imageHeight = 186;
+        super(menu, inv, title, 352, 186);
     }
 
     @Override
@@ -84,7 +84,7 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
                 .tooltip(Tooltip.create(Component.translatable("freetrade.gui.trader.buy_tip")))
                 .build());
         refreshBtn = addRenderableWidget(Button.builder(Component.translatable("freetrade.gui.trader.refresh"),
-                        b -> PacketDistributor.sendToServer(new FreeTradeNetwork.CatalogRequest(false)))
+                        b -> ClientPacketDistributor.sendToServer(new FreeTradeNetwork.CatalogRequest(false)))
                 .bounds(x + 248, y + 174, 48, 12)
                 .tooltip(Tooltip.create(Component.translatable("freetrade.gui.trader.refresh_tip")))
                 .build());
@@ -109,13 +109,13 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     }
 
     private void sell() {
-        PacketDistributor.sendToServer(new FreeTradeNetwork.TraderAction(menu.containerId, true, "", 0, bank));
+        ClientPacketDistributor.sendToServer(new FreeTradeNetwork.TraderAction(menu.containerId, true, "", 0, bank));
     }
 
     private void buy() {
         Catalog.Entry sel = catalog.selected();
         if (sel == null || sel.buy() < 0) return;
-        PacketDistributor.sendToServer(new FreeTradeNetwork.TraderAction(menu.containerId, false, sel.item(), quantity, bank));
+        ClientPacketDistributor.sendToServer(new FreeTradeNetwork.TraderAction(menu.containerId, false, sel.item(), quantity, bank));
     }
 
     @Override
@@ -139,19 +139,19 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
         // typing in the search box must not trigger the inventory key (which closes the screen)
-        if (search != null && search.isFocused() && keyCode != GLFW.GLFW_KEY_ESCAPE) {
-            search.keyPressed(keyCode, scanCode, modifiers);
+        if (search != null && search.isFocused() && event.key() != GLFW.GLFW_KEY_ESCAPE) {
+            search.keyPressed(event);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (catalog.mouseClicked(mouseX, mouseY, button)) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (catalog.mouseClicked(event.x(), event.y(), event.button())) return true;
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
@@ -163,7 +163,8 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     // ------------------------------------------------------------------ drawing
 
     @Override
-    protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(g, mouseX, mouseY, partialTick);
         int x = leftPos, y = topPos;
         MachineScreen.panel(g, x, y, imageWidth, imageHeight);
         g.fill(x + 176, y + 4, x + 177, y + imageHeight - 4, 0xFF8B8B8B);
@@ -171,44 +172,44 @@ public class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     }
 
     @Override
-    protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         // only the title: the player inventory label would collide with the Sell button
-        g.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
+        g.text(font, title, titleLabelX, titleLabelY, 0xFF404040, false);
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        super.render(g, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
         int x = leftPos, y = topPos;
-        int dark = 0x404040;
+        int dark = 0xFF404040;
 
         // left: sell grid
-        g.drawString(font, Component.translatable("freetrade.gui.trader.sell_label"), x + 8, y + 18, dark, false);
-        g.drawString(font, font.plainSubstrByWidth(sellInfo(), 108), x + 62, y + 89, dark, false);
+        g.text(font, Component.translatable("freetrade.gui.trader.sell_label"), x + 8, y + 18, dark, false);
+        g.text(font, font.plainSubstrByWidth(sellInfo(), 108), x + 62, y + 89, dark, false);
 
         // right: header, quantity and selection
-        g.drawString(font, Component.translatable("freetrade.gui.trader.buy"), x + RX, y + 6, dark, false);
+        g.text(font, Component.translatable("freetrade.gui.trader.buy"), x + RX, y + 6, dark, false);
         catalog.render(g, mouseX, mouseY);
-        g.drawCenteredString(font, String.valueOf(quantity), x + RX + 79, y + 141, dark);
+        g.centeredText(font, String.valueOf(quantity), x + RX + 79, y + 141, dark);
 
         Catalog.Entry sel = catalog.selected();
         if (sel == null) {
-            g.drawString(font, Component.translatable("freetrade.gui.trader.select_hint"), x + RX + 20, y + 158, dark, false);
+            g.text(font, Component.translatable("freetrade.gui.trader.select_hint"), x + RX + 20, y + 158, dark, false);
         } else {
-            g.renderItem(ItemKeys.stack(sel.item(), 1), x + RX, y + 155);
-            g.drawString(font, font.plainSubstrByWidth(CatalogWidget.name(sel).getString(), 146),
+            g.item(ItemKeys.stack(sel.item(), 1), x + RX, y + 155);
+            g.text(font, font.plainSubstrByWidth(CatalogWidget.name(sel).getString(), 146),
                     x + RX + 20, y + 155, dark, false);
             if (sel.buy() < 0) {
-                g.drawString(font, Component.translatable("freetrade.gui.trader.out_of_stock"), x + RX + 20, y + 165, 0x8B0000, false);
+                g.text(font, Component.translatable("freetrade.gui.trader.out_of_stock"), x + RX + 20, y + 165, 0xFF8B0000, false);
             } else {
                 long cost = (long) Math.min(Long.MAX_VALUE / 2, (double) sel.buy() * quantity);
-                g.drawString(font, Component.translatable("freetrade.gui.trader.cost", Money.format(cost)),
+                g.text(font, Component.translatable("freetrade.gui.trader.cost", Money.format(cost)),
                         x + RX + 20, y + 165, dark, false);
             }
         }
 
         List<Component> tip = catalog.tooltip(mouseX, mouseY);
-        if (tip != null) g.renderComponentTooltip(font, tip, mouseX, mouseY);
+        if (tip != null) g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
     }
 
     /** "~ X U.M.  (kind xN)" for the sell grid; the estimate uses the catalog's sell price when known. */

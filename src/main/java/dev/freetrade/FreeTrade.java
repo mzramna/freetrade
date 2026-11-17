@@ -42,9 +42,9 @@ public class FreeTrade {
     }
 
     private static void onCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModRegistries.SELL_POINT_BE.get(),
+        event.registerBlockEntity(Capabilities.Item.BLOCK, ModRegistries.SELL_POINT_BE.get(),
                 MarketStorageBlockEntity::itemHandler);
-        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModRegistries.AUTO_BUYER_BE.get(),
+        event.registerBlockEntity(Capabilities.Item.BLOCK, ModRegistries.AUTO_BUYER_BE.get(),
                 MarketStorageBlockEntity::itemHandler);
     }
 

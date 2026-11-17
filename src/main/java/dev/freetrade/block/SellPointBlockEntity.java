@@ -12,7 +12,6 @@ import net.minecraft.world.Containers;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Sell Point: stores one item and, while powered by redstone, sells it to the association. The money goes to
@@ -49,8 +48,7 @@ public class SellPointBlockEntity extends MarketStorageBlockEntity {
             long back = n - (res.ok() ? res.units() : 0);
             if (isRemoved() && level != null) {
                 // block broken meanwhile: hand out what belongs to the owner
-                ItemStack rest = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
-                        net.minecraft.resources.ResourceLocation.parse(item)), (int) Math.min(Integer.MAX_VALUE, back));
+                ItemStack rest = dev.freetrade.util.ItemKeys.stack(item, (int) Math.min(Integer.MAX_VALUE, back));
                 if (!rest.isEmpty()) Containers.dropItemStack(level, worldPosition.getX(), worldPosition.getY(), worldPosition.getZ(), rest);
                 for (ItemStack s : Currency.change(res.ok() ? res.payoutMilli() : 0).stacks()) {
                     Containers.dropItemStack(level, worldPosition.getX(), worldPosition.getY(), worldPosition.getZ(), s);
@@ -65,46 +63,10 @@ public class SellPointBlockEntity extends MarketStorageBlockEntity {
         }));
     }
 
-    private final IItemHandler handler = new IItemHandler() {
-        @Override
-        public int getSlots() {
-            return 2;
-        }
-
-        @Override
-        public ItemStack getStackInSlot(int slot) {
-            if (slot != 1 || !powered) return ItemStack.EMPTY;
-            Item c = selectedCurrency();
-            return c == null ? ItemStack.EMPTY : withdrawCurrency(c, Integer.MAX_VALUE, true);
-        }
-
-        @Override
-        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            if (slot != 0 || stack.isEmpty()) return stack;
-            if (Currency.isCurrency(stack)) return depositCurrency(stack, simulate);
-            return insertStored(stack, simulate);
-        }
-
-        @Override
-        public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            if (slot != 1 || !powered || pending) return ItemStack.EMPTY;
-            Item c = selectedCurrency();
-            return c == null ? ItemStack.EMPTY : withdrawCurrency(c, amount, simulate);
-        }
-
-        @Override
-        public int getSlotLimit(int slot) {
-            return 64;
-        }
-
-        @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            return slot == 0 && (Currency.isCurrency(stack) || (!target.isEmpty() && insertStored(stack, true).getCount() < stack.getCount()));
-        }
-    };
+    private final MarketResourceHandler handler = new MarketResourceHandler(this, true);
 
     @Override
-    public IItemHandler itemHandler(@Nullable Direction side) {
+    public net.neoforged.neoforge.transfer.ResourceHandler<net.neoforged.neoforge.transfer.item.ItemResource> itemHandler(@Nullable Direction side) {
         return handler;
     }
 }

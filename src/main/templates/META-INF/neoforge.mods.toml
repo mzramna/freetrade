@@ -15,7 +15,7 @@ Prices fall when an item is abundant and rise when it is scarce; values of unlis
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"
-    versionRange="[21.1.0,)"
+    versionRange="[26.1.0,)"
     ordering="NONE"
     side="BOTH"
 
@@ -40,9 +40,3 @@ Prices fall when an item is abundant and rise when it is scarce; values of unlis
     ordering="NONE"
     side="CLIENT"
 
-[[dependencies.${mod_id}]]
-    modId="emi"
-    type="optional"
-    versionRange="*"
-    ordering="NONE"
-    side="CLIENT"
