@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/mzramna/freetrade/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+logoFile="freetrade.png"
+description='''Free Trade (Livre Comércio): a supply-and-demand economy run by the Trade Association.
+Prices fall when an item is abundant and rise when it is scarce; values of unlisted items are derived from recipes.
+'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.0,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="lightmanscurrency"
+    type="optional"
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"

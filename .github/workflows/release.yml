@@ -1,0 +1,86 @@
+name: Release
+
+# Two ways to publish a release (both build + test both Minecraft versions from
+# the head of their branches and attach both jars to the same release):
+#  - push a tag like v0.1.0
+#  - push to the `release` branch: the tag v<mod_version> (gradle.properties) is created automatically
+on:
+  push:
+    tags: ["v*"]
+    branches: ["release"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.branch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - branch: "1.21.1"
+            java: "21"
+          - branch: "26.1"
+            java: "25"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: GameTests
+        run: ./gradlew runGameTestServer --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ matrix.branch }}
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=v$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: jar-*
+          merge-multiple: true
+          path: dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          files: dist/*.jar
+          generate_release_notes: true
+          fail_on_unmatched_files: true
